@@ -52,30 +52,27 @@ page=st.sidebar.radio(
 # AJOUT ACTIVITE
 # =========================
 
-st.sidebar.header("➕ Ajouter activité")
-
-date=st.sidebar.date_input("Date")
-debut=st.sidebar.time_input("Début")
-fin=st.sidebar.time_input("Fin")
-
-desc=st.sidebar.text_area("Description")
-color=st.sidebar.color_picker("Couleur","#00ff9c")
-
 if st.sidebar.button("Ajouter activité"):
 
-    supabase.table("agenda").insert({
+    try:
 
-        "date": str(date),
-        "debut": debut.strftime("%H:%M:%S"),
-        "fin": fin.strftime("%H:%M:%S"),
-        "description": desc,
-        "color": color
+        supabase.table("agenda").insert({
 
-    }).execute()
+            "date": str(date),
+            "debut": debut.strftime("%H:%M:%S"),
+            "fin": fin.strftime("%H:%M:%S"),
+            "description": desc,
+            "color": color
 
-    st.success("Activité ajoutée")
+        }).execute()
 
-    st.rerun()
+        st.success("Activité ajoutée")
+
+        st.rerun()
+
+    except Exception as e:
+
+        st.error(e)
 
 # =========================
 # TRI
