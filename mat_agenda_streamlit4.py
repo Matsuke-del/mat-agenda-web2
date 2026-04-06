@@ -66,15 +66,15 @@ color=st.sidebar.color_picker("Couleur","#00ff9c")
 
 if st.sidebar.button("Ajouter activité"):
 
-supabase.table("agenda").insert({
+    supabase.table("agenda").insert({
 
-    "date": date.isoformat(),
-    "debut": debut.strftime("%H:%M:%S"),
-    "fin": fin.strftime("%H:%M:%S"),
-    "description": desc,
-    "color": color
+        "date": date.isoformat(),
+        "debut": debut.strftime("%H:%M:%S"),
+        "fin": fin.strftime("%H:%M:%S"),
+        "description": desc,
+        "color": color
 
-}).execute()
+    }).execute()
 
     st.success("Activité ajoutée")
 
