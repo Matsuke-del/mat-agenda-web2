@@ -6,8 +6,7 @@ from streamlit_calendar import calendar
 from supabase import create_client
 
 url = "https://quamffmaxqhhtyxworou.supabase.co"
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YW1mZm1heHFoaHR5eHdvcm91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNzM4MjUsImV4cCI6MjA5MDk0OTgyNX0.aO5mv0jaOzFrj_yd8JtXDBrff0mwzsdPZpei_i3C_BM"
-
+key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
 supabase = create_client(url, key)
 
 
