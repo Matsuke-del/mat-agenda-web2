@@ -9,6 +9,13 @@ url = "https://quamffmaxqhhtyxworou.supabase.co"
 key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
 supabase = create_client(url, key)
 
+supabase.table("agenda").insert({
+    "date": str(date),
+    "debut": debut.strftime("%H:%M:%S"),
+    "fin": fin.strftime("%H:%M:%S"),
+    "description": desc,
+    "color": color
+}).execute()
 
 st.set_page_config(layout="wide")
 st.title("🧠 MAT AGENDA TXT")
