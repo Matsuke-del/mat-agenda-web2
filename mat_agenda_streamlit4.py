@@ -68,7 +68,7 @@ if st.sidebar.button("Ajouter activité"):
 
     supabase.table("agenda").insert({
 
-        "date": str(date),
+        "date": date.isoformat()
         "debut": debut.strftime("%H:%M:%S"),
         "fin": fin.strftime("%H:%M:%S"),
         "description": desc,
