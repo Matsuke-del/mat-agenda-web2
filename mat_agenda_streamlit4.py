@@ -95,25 +95,28 @@ if "edit_id" in st.session_state:
         accept_multiple_files=True
     )
 
-    if st.button("Enregistrer modification"):
-        if new_uploads:
-            for img in new_uploads:
-                file_name = f"{int(datetime.now().timestamp()*1000)}_{img.name}"
-                supabase.storage.from_("agenda-images").upload(file_name, img.getvalue())
-                url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-                new_images_list.append(url)
+if st.button("Enregistrer modification"):
+    # Upload nouvelles images
+    if new_uploads:
+        for img in new_uploads:
+            file_name = f"{datetime.now().timestamp()}_{img.name}"
+            supabase.storage.from_("agenda-images").upload(file_name, img.getvalue())
+            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+            new_images_list.append(url)
 
-        supabase.table("agenda").update({
-            "date": new_date.isoformat(),
-            "debut": new_debut,
-            "fin": new_fin,
-            "description": new_desc,
-            "image_url": json.dumps(new_images_list)
-        }).eq("id", st.session_state["edit_id"]).execute()
+    # Mise à jour Supabase
+    supabase.table("agenda").update({
+        "date": new_date.isoformat(),
+        "debut": new_debut,
+        "fin": new_fin,
+        "description": new_desc,
+        "image_url": json.dumps(new_images_list)
+    }).eq("id", st.session_state["edit_id"]).execute()
 
-        del st.session_state["edit_id"]
-        st.success("Activité modifiée")
-        st.experimental_rerun()
+    # Supprimer l'état session et rerun
+    del st.session_state["edit_id"]
+    st.success("Activité modifiée")
+    st.experimental_rerun()  # <- ici OK, juste après le bouton
 
 # =========================
 # NAVIGATION
