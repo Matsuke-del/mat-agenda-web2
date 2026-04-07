@@ -81,35 +81,35 @@ debut = st.sidebar.time_input("Début")
 fin = st.sidebar.time_input("Fin")
 desc = st.sidebar.text_area("Description")
 color = st.sidebar.color_picker("Couleur", "#00ff9c")
-# Nouveau – support plusieurs fichiers
+# Upload multi-images et stockage JSON
 images = st.sidebar.file_uploader(
     "Images activité (plusieurs possibles)",
-    type=["png", "jpg", "jpeg"],
+    type=["png","jpg","jpeg"],
     accept_multiple_files=True
 )
 
 image_urls = []
 
-if st.sidebar.button("Ajouter activité"):
-
-image_urls = []
-
-if images:  # images = st.sidebar.file_uploader(..., accept_multiple_files=True)
+if images:  # <- le bloc doit être indenté
     for image in images:
-        file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
-        supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
-        url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-        image_urls.append(url)
+        try:
+            file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
+            supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
+            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+            image_urls.append(url)
+        except Exception as e:
+            st.error(f"Erreur upload {image.name}: {e}")
 
-# Insérer activité avec toutes les URLs en JSON
-supabase.table("agenda").insert({
-    "date": date.isoformat(),
-    "debut": debut.strftime("%H:%M:%S"),
-    "fin": fin.strftime("%H:%M:%S"),
-    "description": desc,
-    "color": color,
-    "image_url": json.dumps(image_urls)  # <- JSON pour plusieurs images
-}).execute()
+# Insérer l’activité dans Supabase avec toutes les URLs
+if st.sidebar.button("Ajouter activité"):
+    supabase.table("agenda").insert({
+        "date": date.isoformat(),
+        "debut": debut.strftime("%H:%M:%S"),
+        "fin": fin.strftime("%H:%M:%S"),
+        "description": desc,
+        "color": color,
+        "image_url": json.dumps(image_urls)  # <- stocke la liste d’URLs en JSON
+    }).execute()
     st.success("Activité ajoutée")
     st.rerun()
 
