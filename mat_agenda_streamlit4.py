@@ -241,12 +241,12 @@ if page == "📂 Liste":
                         f"""
                         ### {row['description']}
 
-                         Date : {row['date']}
+                        Date : {row['date']}
 
-                         Heure : {row['debut']} - {row['fin']}
+                        Heure : {row['debut']} - {row['fin']}
 
-                         Durée : {round(row['heures'], 2)} h
-                         """
+                        Durée : {round(row['heures'], 2)} h
+                        """
                     )
                 )
 
