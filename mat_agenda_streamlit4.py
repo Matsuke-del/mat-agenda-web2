@@ -235,14 +235,13 @@ if page == "📂 Liste":
             # --- COLONNE 1 : Affichage activité ---
             with col1:
                 st.markdown(
-                    f"""
-### {row['description']}
+                    f"""### {row['description']}
 
-Date : {row['date']}
+📅 {row['date']}
 
-Heure : {row['debut']} - {row['fin']}
+⏰ {row['debut']} → {row['fin']}
 
-Durée : {round(row['heures'], 2)} h"""
+⏱ Durée : {round(row['heures'], 2)} h"""
                 )
            
                 # afficher image si elle existe
