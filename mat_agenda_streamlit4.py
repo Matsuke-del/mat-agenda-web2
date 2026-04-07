@@ -220,6 +220,8 @@ if page=="📅 Calendrier":
 # LISTE
 # =========================
 
+import textwrap
+
 if page == "📂 Liste":
 
     st.header("📂 Activités")
@@ -235,15 +237,17 @@ if page == "📂 Liste":
             # --- COLONNE 1 : Affichage activité ---
             with col1:
                 st.markdown(
-                    f"""
-### {row['description']}
+                    textwrap.dedent(
+                        f"""
+                        ### {row['description']}
 
-Date : {row['date']}
+                        Date : {row['date']}
 
-Heure : {row['debut']} - {row['fin']}
+                        Heure : {row['debut']} - {row['fin']}
 
-Durée : {round(row['heures'], 2)} h
-"""
+                        Durée : {round(row['heures'], 2)} h
+                        """
+                    )
                 )
 
                 # afficher image si elle existe
