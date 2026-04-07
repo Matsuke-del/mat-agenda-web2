@@ -8,9 +8,14 @@ from supabase import create_client
 # =========================
 # SUPABASE
 # =========================
+from supabase import create_client
+
 url = "https://quamffmaxqhhtyxworou.supabase.co"
 key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
 supabase = create_client(url, key)
+
+response = supabase.table("agenda").select("*").execute()
+print(response.data)
 
 # =========================
 # CONFIGURATION PAGE
