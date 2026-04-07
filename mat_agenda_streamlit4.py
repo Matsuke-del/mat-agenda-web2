@@ -271,17 +271,19 @@ if page == "📅 Calendrier":
 # LISTE
 # =========================
 if page == "📂 Liste":
+
     st.header("📂 Activités")
 
-    # Si aucune recherche, on affiche tout
     if filtered_df.empty:
         st.info("Aucune activité")
     else:
         for _, row in filtered_df.iterrows():
+
+            # Créer les colonnes
             col1, col2, col3 = st.columns([6,1,1])
 
             # -------------------
-            # COLONNE 1 : affichage
+            # COLONNE 1 : affichage description et images
             # -------------------
             with col1:
                 st.markdown(f"""
@@ -292,42 +294,44 @@ if page == "📂 Liste":
 ⏰ {row['debut']} → {row['fin']}
 """)
 
-                # Affichage multi-images sur la même ligne
-                images = []
+                # Affichage des images sur la même ligne
                 if "image_url" in row and row["image_url"]:
                     try:
                         images = json.loads(row["image_url"])
                     except:
                         images = [row["image_url"]]
 
-                if images:
-                    cols_images = st.columns(len(images))
-                    for i, img in enumerate(images):
-                        if img and str(img).startswith("http"):
-                            cols_images[i].image(img, use_container_width=True)
+                    if not isinstance(images, list):
+                        images = [images]
+
+                    if images:
+                        img_cols = st.columns(len(images))
+                        for i, img in enumerate(images):
+                            if img and str(img).startswith("http"):
+                                img_cols[i].image(img, use_container_width=True)
 
             # -------------------
             # COLONNE 2 : modifier
             # -------------------
-with col2:
-    edit_key = f"edit{row['id']}"
-    if st.button("✏", key=edit_key):
-        st.session_state["edit_id"] = row["id"]
-        st.session_state["edit_desc"] = row["description"]
-        st.session_state["edit_date"] = row["date"]
-        st.session_state["edit_debut"] = row["debut"]
-        st.session_state["edit_fin"] = row["fin"]
-        st.session_state["edit_images"] = row.get("image_url", "[]")
-        st.stop()  # <-- STOP remplace st.experimental_rerun pour éviter l'AttributeError
+            with col2:
+                edit_key = f"edit{row['id']}"
+                if st.button("✏", key=edit_key):
+                    st.session_state["edit_id"] = row["id"]
+                    st.session_state["edit_desc"] = row["description"]
+                    st.session_state["edit_date"] = row["date"]
+                    st.session_state["edit_debut"] = row["debut"]
+                    st.session_state["edit_fin"] = row["fin"]
+                    st.session_state["edit_images"] = row.get("image_url", "[]")
+                    st.stop()  # stop pour rerun propre
 
             # -------------------
             # COLONNE 3 : supprimer
             # -------------------
-with col3:
-    del_key = f"del{row['id']}"
-    if st.button("❌", key=del_key):
-        supabase.table("agenda").delete().eq("id", row["id"]).execute()
-        st.stop()  # <-- STOP ici aussi
+            with col3:
+                del_key = f"del{row['id']}"
+                if st.button("❌", key=del_key):
+                    supabase.table("agenda").delete().eq("id", row["id"]).execute()
+                    st.stop()
 # =========================
 # STATISTIQUES
 # =========================
