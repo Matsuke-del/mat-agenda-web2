@@ -84,7 +84,7 @@ if "edit_id" in st.session_state:
     new_images_list = []
 
     for i, img in enumerate(images):
-        col1, col2 = st.columns([5,1])
+        col1, col2 = st.columns([5, 1])
         with col1:
             st.image(img, width=250)
         with col2:
@@ -100,12 +100,16 @@ if "edit_id" in st.session_state:
     )
 
     if st.button("Enregistrer modification"):
+        # Upload nouvelles images
         if new_uploads:
             for img in new_uploads:
                 file_name = f"{int(datetime.now().timestamp()*1000)}_{img.name}"
-                supabase.storage.from_("agenda-images").upload(file_name, img.getvalue())
-                url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-                new_images_list.append(url)
+                try:
+                    supabase.storage.from_("agenda-images").upload(file_name, img.getvalue())
+                    url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+                    new_images_list.append(url)
+                except Exception as e:
+                    st.error(f"Erreur upload {img.name}: {e}")
 
         # Mise à jour Supabase
         supabase.table("agenda").update({
@@ -116,9 +120,15 @@ if "edit_id" in st.session_state:
             "image_url": json.dumps(new_images_list)
         }).eq("id", st.session_state["edit_id"]).execute()
 
-        del st.session_state["edit_id"]
-        st.success("Activité modifiée")
-        st.experimental_rerun()
+        # Nettoyage session_state
+        st.session_state.pop("edit_id", None)
+        st.session_state.pop("edit_desc", None)
+        st.session_state.pop("edit_date", None)
+        st.session_state.pop("edit_debut", None)
+        st.session_state.pop("edit_fin", None)
+        st.session_state.pop("edit_images", None)
+
+        st.success("Activité modifiée ! Veuillez rafraîchir la page pour voir les changements.")
 
 # =========================
 # NAVIGATION
