@@ -205,11 +205,26 @@ if page == "📂 Liste":
 """)
                 # Affichage multi-images
                 if "image_url" in row and row["image_url"]:
-                    import json
-                    row_image_urls = json.loads(row["image_url"])
-                    for img_url in row_image_urls:
-                        if img_url and str(img_url).startswith("http"):
-                            st.image(img_url, width=350)
+import json
+
+if "image_url" in row and row["image_url"]:
+
+    images = row["image_url"]
+
+    # convertir si c'est du JSON
+    if isinstance(images, str):
+        try:
+            images = json.loads(images)
+        except:
+            images = [images]
+
+    # si une seule image
+    if not isinstance(images, list):
+        images = [images]
+
+    for img in images:
+        if img and str(img).startswith("http"):
+            st.image(img, width=350)
 
             # --- COLONNE 2 : Bouton modifier ---
             with col2:
