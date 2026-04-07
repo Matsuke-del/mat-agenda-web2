@@ -189,56 +189,71 @@ if page == "📂 Liste":
         st.info("Aucune activité")
 
     else:
+
         for _, row in df.iterrows():
-            # Création des colonnes
-            col1, col2, col3 = st.columns([6, 1, 1])
 
-            # --- COLONNE 1 : Affichage activité ---
+            # créer les colonnes
+            col1, col2, col3 = st.columns([6,1,1])
+
+            # -------------------
+            # COLONNE 1 : affichage
+            # -------------------
             with col1:
-                st.markdown(f"""### {row['description']}
 
-📅 Date : {row['date']}
+                st.markdown(f"""
+### {row['description']}
 
-⏰ Heure : {row['debut']} - {row['fin']}
+📅 {row['date']}
 
-⏱ Durée : {round(row['heures'], 2)} h
+⏰ {row['debut']} → {row['fin']}
+
+⏱ Durée : {round(row['heures'],2)} h
 """)
 
-if "image_url" in row and row["image_url"]:
+                # afficher images
+                if "image_url" in row and row["image_url"]:
 
-    import json
+                    import json
 
-    images = row["image_url"]
+                    images = row["image_url"]
 
-    # convertir si c'est du JSON
-    if isinstance(images, str):
-        try:
-            images = json.loads(images)
-        except:
-            images = [images]
+                    if isinstance(images,str):
+                        try:
+                            images=json.loads(images)
+                        except:
+                            images=[images]
 
-    # si ce n'est pas une liste
-    if not isinstance(images, list):
-        images = [images]
+                    if not isinstance(images,list):
+                        images=[images]
 
-    for img in images:
-        if img and str(img).startswith("http"):
-            st.image(img, width=350)
+                    for img in images:
+                        if img and str(img).startswith("http"):
+                            st.image(img,width=350)
 
-            # --- COLONNE 2 : Bouton modifier ---
+            # -------------------
+            # COLONNE 2 : modifier
+            # -------------------
             with col2:
+
                 if st.button("✏", key=f"edit{row['id']}"):
+
                     st.session_state["edit_id"] = row["id"]
                     st.session_state["edit_desc"] = row["description"]
                     st.session_state["edit_date"] = row["date"]
                     st.session_state["edit_debut"] = row["debut"]
                     st.session_state["edit_fin"] = row["fin"]
+
                     st.rerun()
 
-            # --- COLONNE 3 : Bouton supprimer ---
+            # -------------------
+            # COLONNE 3 : supprimer
+            # -------------------
             with col3:
+
                 if st.button("❌", key=f"del{row['id']}"):
-                    supabase.table("agenda").delete().eq("id", row["id"]).execute()
+
+                    supabase.table("agenda").delete().eq("id",row["id"]).execute()
+
                     st.rerun()
 
 # =========================
