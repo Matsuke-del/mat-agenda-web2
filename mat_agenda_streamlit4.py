@@ -64,7 +64,7 @@ fin=st.sidebar.time_input("Fin")
 desc=st.sidebar.text_area("Description")
 color=st.sidebar.color_picker("Couleur","#00ff9c")
 
-image = st.sidebar.file_uploader("Ajouter une image", type=["png","jpg","jpeg"])
+supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
 
 if st.sidebar.button("Ajouter activité"):
 
