@@ -40,6 +40,26 @@ def lire_data():
 df = lire_data()
 
 # =========================
+# RECHERCHE
+# =========================
+
+search = st.sidebar.text_input("🔎 Recherche mot clé")
+search_date = st.sidebar.date_input("📅 Recherche par date")
+
+filtered_df = df.copy()
+
+# filtre mot clé
+if search:
+    filtered_df = filtered_df[
+        filtered_df["description"].str.contains(search, case=False, na=False)
+    ]
+
+# filtre date
+if search_date:
+    filtered_df = filtered_df[
+        filtered_df["date"] == search_date.strftime("%Y-%m-%d")
+    ]
+# =========================
 # MODIFICATION ACTIVITE
 # =========================
 import json
