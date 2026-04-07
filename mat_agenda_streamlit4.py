@@ -42,26 +42,97 @@ df = lire_data()
 # =========================
 # MODIFICATION ACTIVITE
 # =========================
+import json
+
 if "edit_id" in st.session_state:
+
     st.subheader("✏ Modifier activité")
+
     new_date = st.date_input(
         "Date",
         value=pd.to_datetime(st.session_state["edit_date"])
     )
+
     new_debut = st.text_input("Début", st.session_state["edit_debut"])
     new_fin = st.text_input("Fin", st.session_state["edit_fin"])
-    new_desc = st.text_area("Description", value=st.session_state["edit_desc"])
+
+    new_desc = st.text_area(
+        "Description",
+        value=st.session_state["edit_desc"]
+    )
+
+    # ------------------------
+    # IMAGES EXISTANTES
+    # ------------------------
+
+    images = []
+
+    if "edit_images" in st.session_state and st.session_state["edit_images"]:
+        try:
+            images = json.loads(st.session_state["edit_images"])
+        except:
+            images = []
+
+    st.subheader("Images existantes")
+
+    new_images_list = []
+
+    for i, img in enumerate(images):
+
+        col1, col2 = st.columns([5,1])
+
+        with col1:
+            st.image(img, width=250)
+
+        with col2:
+            delete = st.checkbox("❌", key=f"delimg{i}")
+
+        if not delete:
+            new_images_list.append(img)
+
+    # ------------------------
+    # AJOUT NOUVELLES IMAGES
+    # ------------------------
+
+    new_uploads = st.file_uploader(
+        "Ajouter nouvelles images",
+        type=["png","jpg","jpeg"],
+        accept_multiple_files=True
+    )
 
     if st.button("Enregistrer modification"):
+
+        # upload nouvelles images
+        if new_uploads:
+
+            for img in new_uploads:
+
+                file_name = f"{datetime.now().timestamp()}_{img.name}"
+
+                supabase.storage.from_("agenda-images").upload(
+                    file_name,
+                    img.getvalue()
+                )
+
+                url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+
+                new_images_list.append(url)
+
+        # mise à jour supabase
         supabase.table("agenda").update({
+
             "date": new_date.isoformat(),
             "debut": new_debut,
             "fin": new_fin,
-            "description": new_desc
+            "description": new_desc,
+            "image_url": json.dumps(new_images_list)
+
         }).eq("id", st.session_state["edit_id"]).execute()
 
         del st.session_state["edit_id"]
+
         st.success("Activité modifiée")
+
         st.rerun()
 
 # =========================
