@@ -152,23 +152,23 @@ if page == "📅 Calendrier":
             })
         calendar(events=events)
 
-        st.subheader("📅 Voir les activités d'une date")
-        selected_date = st.date_input("Choisir une date")
-        day_activities = df[df["date"] == selected_date.strftime("%Y-%m-%d")]
+st.subheader("📅 Voir les activités d'une date")
+selected_date = st.date_input("Choisir une date")
+day_activities = df[df["date"] == selected_date.strftime("%Y-%m-%d")]
 
-            if not day_activities.empty:
-                for _, row in day_activities.iterrows():
-                    st.markdown(f"""### {row['debut']} → {row['fin']}
+if not day_activities.empty:
+    for _, row in day_activities.iterrows():
+        st.markdown(f"""### {row['debut']} → {row['fin']}
 
-            {row['description']}""")
+{row['description']}""")
         
-                # Affichage multi-images
-                    if "image_url" in row and row["image_url"]:
-                        for img_url in row["image_url"]:
-                            if img_url and str(img_url).startswith("http"):
-                                st.image(img_url, width=350)
-             else:
-                 st.info("Aucune activité pour cette date")
+        # Affichage multi-images
+        if "image_url" in row and row["image_url"]:
+            for img_url in row["image_url"]:
+                if img_url and str(img_url).startswith("http"):
+                    st.image(img_url, width=350)
+else:
+    st.info("Aucune activité pour cette date")
 
 # =========================
 # LISTE
