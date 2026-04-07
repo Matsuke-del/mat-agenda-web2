@@ -224,6 +224,31 @@ if not filtered_df.empty:
 # =========================
 if page == "📅 Calendrier":
     st.header("📅 Calendrier")
+
+    # Recherche dans le calendrier uniquement
+    search = st.text_input("🔎 Recherche mot clé")
+    search_date = st.date_input("📅 Recherche par date")
+
+    cal_df = df.copy()
+
+    if search:
+        cal_df = cal_df[cal_df["description"].str.contains(search, case=False, na=False)]
+
+    if search_date:
+        cal_df = cal_df[cal_df["date"] == search_date.strftime("%Y-%m-%d")]
+
+    if not cal_df.empty:
+        events = []
+        for _, row in cal_df.iterrows():
+            events.append({
+                "title": row["description"].split("\n")[0][:40],
+                "start": row["date"] + "T" + row["debut"],
+                "end": row["date"] + "T" + row["fin"],
+                "color": row["color"]
+            })
+        calendar(events=events)
+    else:
+        st.info("Aucune activité pour ce filtre")
     if not df.empty:
         events = []
         for _, row in df.iterrows():
@@ -267,24 +292,18 @@ if page == "📅 Calendrier":
 # =========================
 # LISTE
 # =========================
-# =========================
-# LISTE
-# =========================
+
 if page == "📂 Liste":
 
     st.header("📂 Activités")
 
-    if filtered_df.empty:
+    if df.empty:
         st.info("Aucune activité")
     else:
-        for _, row in filtered_df.iterrows():
+        for _, row in df.iterrows():
 
-            # Créer les colonnes
             col1, col2, col3 = st.columns([6,1,1])
 
-            # -------------------
-            # COLONNE 1 : affichage description et images
-            # -------------------
             with col1:
                 st.markdown(f"""
 ### {row['description']}
@@ -310,9 +329,6 @@ if page == "📂 Liste":
                             if img and str(img).startswith("http"):
                                 img_cols[i].image(img, use_container_width=True)
 
-            # -------------------
-            # COLONNE 2 : modifier
-            # -------------------
             with col2:
                 edit_key = f"edit{row['id']}"
                 if st.button("✏", key=edit_key):
@@ -324,9 +340,6 @@ if page == "📂 Liste":
                     st.session_state["edit_images"] = row.get("image_url", "[]")
                     st.stop()  # stop pour rerun propre
 
-            # -------------------
-            # COLONNE 3 : supprimer
-            # -------------------
             with col3:
                 del_key = f"del{row['id']}"
                 if st.button("❌", key=del_key):
