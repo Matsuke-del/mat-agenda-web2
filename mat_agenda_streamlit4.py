@@ -38,6 +38,39 @@ def lire_data():
 
 df = lire_data()
 
+if "edit_id" in st.session_state:
+
+    st.subheader("✏ Modifier activité")
+
+    new_date = st.date_input(
+        "Date",
+        value=pd.to_datetime(st.session_state["edit_date"])
+    )
+
+    new_debut = st.text_input("Début", st.session_state["edit_debut"])
+    new_fin = st.text_input("Fin", st.session_state["edit_fin"])
+
+    new_desc = st.text_area(
+        "Description",
+        value=st.session_state["edit_desc"]
+    )
+
+    if st.button("Enregistrer modification"):
+
+        supabase.table("agenda").update({
+
+            "date": new_date.isoformat(),
+            "debut": new_debut,
+            "fin": new_fin,
+            "description": new_desc
+
+        }).eq("id", st.session_state["edit_id"]).execute()
+
+        del st.session_state["edit_id"]
+
+        st.success("Activité modifiée")
+
+        st.rerun()
 # =========================
 # NAVIGATION
 # =========================
@@ -165,9 +198,14 @@ if page=="📅 Calendrier":
             for _,row in day_activities.iterrows():
 
                 st.markdown(f"""
-### {row['debut']} → {row['fin']}
+            ### {row['debut']} → {row['fin']}
 
-{row['description']}
+            {row['description']}
+            """)
+
+                      # afficher image si elle existe
+                if row.get("image_url"):
+                    st.image(row["image_url"], width=350)
 """)
 
         else:
@@ -193,7 +231,7 @@ if page=="📂 Liste":
 
         for _,row in df.iterrows():
 
-            col1,col2=st.columns([6,1])
+            col1,col2,col3 = st.columns([6,1,1])
 
             with col1:
 
@@ -211,13 +249,28 @@ if page=="📂 Liste":
                 if "image_url" in row and row["image_url"] and str(row["image_url"]).startswith("http"):
                     st.image(row["image_url"], width=350)
 
+            # bouton modifier
             with col2:
 
-                if st.button("❌", key=row["id"]):
+                if st.button("✏", key=f"edit{row['id']}"):
+
+                    st.session_state["edit_id"] = row["id"]
+                    st.session_state["edit_desc"] = row["description"]
+                    st.session_state["edit_date"] = row["date"]
+                    st.session_state["edit_debut"] = row["debut"]
+                    st.session_state["edit_fin"] = row["fin"]
+
+                    st.rerun()
+
+            # bouton supprimer
+            with col3:
+
+                if st.button("❌", key=f"del{row['id']}"):
 
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
 
                     st.rerun()
+                    
 # =========================
 # STATISTIQUES
 # =========================
