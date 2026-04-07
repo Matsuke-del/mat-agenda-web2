@@ -256,14 +256,13 @@ if page == "📂 Liste":
 
     st.header("📂 Activités")
 
-    if df.empty:
+    if filtered_df.empty:
         st.info("Aucune activité")
 
     else:
 
-        for _, row in df.iterrows():
+        for _, row in filtered_df.iterrows():
 
-            # créer les colonnes
             col1, col2, col3 = st.columns([6,1,1])
 
             # -------------------
@@ -297,10 +296,14 @@ if page == "📂 Liste":
                     if not isinstance(images,list):
                         images=[images]
 
-                    for img in images:
-                        if img and str(img).startswith("http"):
-                            st.image(img,width=350)
+if images:
 
+    cols = st.columns(len(images))
+
+    for i, img in enumerate(images):
+        if img and str(img).startswith("http"):
+            cols[i].image(img, use_container_width=True)
+            
             # -------------------
             # COLONNE 2 : modifier
             # -------------------
