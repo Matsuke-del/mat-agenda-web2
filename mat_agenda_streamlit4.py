@@ -237,9 +237,12 @@ if page == "📂 Liste":
                 st.markdown(
                     f"""
 ### {row['description']}
-📅 {row['date']}
-⏰ {row['debut']} → {row['fin']}
-⏱ {round(row['heures'], 2)} h
+
+Date : {row['date']}
+
+Heure : {row['debut']} → {row['fin']}
+
+Durée : {round(row['heures'], 2)} h
 """
                 )
 
