@@ -220,7 +220,7 @@ if page=="📅 Calendrier":
 # LISTE
 # =========================
 
-if page == "📂 Liste":
+if page=="📂 Liste":
 
     st.header("📂 Activités")
 
@@ -228,20 +228,22 @@ if page == "📂 Liste":
         st.info("Aucune activité")
 
     else:
-        for _, row in df.iterrows():
+
+        for _,row in df.iterrows():
 
             col1, col2, col3 = st.columns([6, 1, 1])
 
             # --- COLONNE 1 : Affichage activité ---
             with col1:
-                st.markdown(
-                    f"""### {row['description']}
 
-date : {row['date']}
+                st.markdown(f"""
+### {row['description']}
 
-heure : {row['debut']} - {row['fin']}
+📅 {row['date']}
 
-Durée : {round(row['heures'], 2)} h 
+⏰ {row['debut']} → {row['fin']}
+
+⏱ {round(row['heures'],2)} h
 """)
            
                 # afficher image si elle existe
