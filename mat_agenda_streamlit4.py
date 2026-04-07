@@ -61,7 +61,7 @@ if "edit_id" in st.session_state:
 
         del st.session_state["edit_id"]
         st.success("Activité modifiée")
-        st.experimental_rerun()
+        st.rerun()
 
 # =========================
 # NAVIGATION
@@ -98,7 +98,7 @@ if st.sidebar.button("Ajouter activité"):
         "image_url": image_url
     }).execute()
     st.success("Activité ajoutée")
-    st.experimental_rerun()
+    st.rerun()
 
 # =========================
 # TRI
@@ -193,13 +193,13 @@ if page == "📂 Liste":
                     st.session_state["edit_date"] = row["date"]
                     st.session_state["edit_debut"] = row["debut"]
                     st.session_state["edit_fin"] = row["fin"]
-                    st.experimental_rerun()
+                    st.rerun()
 
             # --- COLONNE 3 : Bouton supprimer ---
             with col3:
                 if st.button("❌", key=f"del{row['id']}"):
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
-                    st.experimental_rerun()
+                    st.rerun()
 
 # =========================
 # STATISTIQUES
