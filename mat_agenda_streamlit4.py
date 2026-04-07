@@ -232,44 +232,38 @@ if page == "📂 Liste":
 
             col1, col2, col3 = st.columns([6, 1, 1])
 
+            # --- COLONNE 1 : Affichage activité ---
             with col1:
                 st.markdown(
                     f"""
-            ### {row['description']}
+### {row['description']}
 
-                     📅 {row['date']}
+📅 {row['date']}
 
-                     ⏰ {row['debut']} → {row['fin']}
+⏰ {row['debut']} → {row['fin']}
 
-                      ⏱ {round(row['heures'], 2)} h
-                      """
-                      )
-
+⏱ {round(row['heures'], 2)} h
+"""
+                )
 
                 # afficher image si elle existe
                 if "image_url" in row and row["image_url"] and str(row["image_url"]).startswith("http"):
                     st.image(row["image_url"], width=350)
 
-            # bouton modifier
+            # --- COLONNE 2 : Bouton modifier ---
             with col2:
-
                 if st.button("✏", key=f"edit{row['id']}"):
-
                     st.session_state["edit_id"] = row["id"]
                     st.session_state["edit_desc"] = row["description"]
                     st.session_state["edit_date"] = row["date"]
                     st.session_state["edit_debut"] = row["debut"]
                     st.session_state["edit_fin"] = row["fin"]
-
                     st.rerun()
 
-            # bouton supprimer
+            # --- COLONNE 3 : Bouton supprimer ---
             with col3:
-
                 if st.button("❌", key=f"del{row['id']}"):
-
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
-
                     st.rerun()
                     
 # =========================
