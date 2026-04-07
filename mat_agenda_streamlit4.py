@@ -64,7 +64,19 @@ fin=st.sidebar.time_input("Fin")
 desc=st.sidebar.text_area("Description")
 color=st.sidebar.color_picker("Couleur","#00ff9c")
 
+image = st.sidebar.file_uploader("Ajouter une image", type=["png","jpg","jpeg"])
+
 if st.sidebar.button("Ajouter activité"):
+
+    image_url = None
+
+    if image is not None:
+
+        file_name = f"{datetime.now().timestamp()}_{image.name}"
+
+        supabase.storage.from_("agenda-images").upload(file_name, image)
+
+        image_url = supabase.storage.from_("agenda-images").get_public_url(file_name)
 
     supabase.table("agenda").insert({
 
@@ -72,7 +84,8 @@ if st.sidebar.button("Ajouter activité"):
         "debut": debut.strftime("%H:%M:%S"),
         "fin": fin.strftime("%H:%M:%S"),
         "description": desc,
-        "color": color
+        "color": color,
+        "image_url": image_url
 
     }).execute()
 
@@ -192,6 +205,10 @@ if page=="📂 Liste":
 
 ⏱ {round(row['heures'],2)} h
 """)
+
+                # afficher image si elle existe
+                if "image_url" in row and row["image_url"]:
+                    st.image(row["image_url"], width=350)
 
             with col2:
 
