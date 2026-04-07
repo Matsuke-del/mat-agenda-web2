@@ -243,7 +243,9 @@ Date : {row['date']}
 Heure : {row['debut']} - {row['fin']}
 
 Durée : {round(row['heures'], 2)} h
-""")
+                        """
+                    )
+                )
            
                 # afficher image si elle existe
                 if "image_url" in row and row["image_url"] and str(row["image_url"]).startswith("http"):
