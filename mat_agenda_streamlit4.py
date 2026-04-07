@@ -241,7 +241,8 @@ date : {row['date']}
 
 heure : {row['debut']} - {row['fin']}
 
-Durée : {round(row['heures'], 2)} h"""
+Durée : {round(row['heures'], 2)} h 
+"""
                 )
            
                 # afficher image si elle existe
