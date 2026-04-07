@@ -234,14 +234,17 @@ if page == "📂 Liste":
 
             # --- COLONNE 1 : Affichage activité ---
             with col1:
-                st.markdown(f"""
+                st.markdown(
+                    f"""
 ### {row['description']}
- {row['date']}
 
- {row['debut']} → {row['fin']}
+📅 {row['date']}
 
- {round(row['heures'], 2)} h
-""")
+⏰ {row['debut']} → {row['fin']}
+
+⏱ {round(row['heures'], 2)} h
+"""
+                )
 
                 # afficher image si elle existe
                 if "image_url" in row and row["image_url"] and str(row["image_url"]).startswith("http"):
@@ -262,7 +265,7 @@ if page == "📂 Liste":
                 if st.button("❌", key=f"del{row['id']}"):
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
                     st.rerun()
-                    
+
 # =========================
 # STATISTIQUES
 # =========================
