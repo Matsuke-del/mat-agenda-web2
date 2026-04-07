@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import json
 from datetime import datetime
 from streamlit_calendar import calendar
 from supabase import create_client
@@ -90,21 +91,25 @@ images = st.sidebar.file_uploader(
 image_urls = []
 
 if st.sidebar.button("Ajouter activité"):
-    if images:
-        for image in images:
-            file_name = f"{datetime.now().timestamp()}_{image.name}"
-            supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
-            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-            image_urls.append(url)
 
-    supabase.table("agenda").insert({
-        "date": date.isoformat(),
-        "debut": debut.strftime("%H:%M:%S"),
-        "fin": fin.strftime("%H:%M:%S"),
-        "description": desc,
-        "color": color,
-        "image_url": image_urls  # <- stocke toutes les URLs
-    }).execute()
+image_urls = []
+
+if images:  # images = st.sidebar.file_uploader(..., accept_multiple_files=True)
+    for image in images:
+        file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
+        supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
+        url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+        image_urls.append(url)
+
+# Insérer activité avec toutes les URLs en JSON
+supabase.table("agenda").insert({
+    "date": date.isoformat(),
+    "debut": debut.strftime("%H:%M:%S"),
+    "fin": fin.strftime("%H:%M:%S"),
+    "description": desc,
+    "color": color,
+    "image_url": json.dumps(image_urls)  # <- JSON pour plusieurs images
+}).execute()
     st.success("Activité ajoutée")
     st.rerun()
 
@@ -163,10 +168,13 @@ if not day_activities.empty:
 {row['description']}""")
         
         # Affichage multi-images
-        if "image_url" in row and row["image_url"]:
-            for img_url in row["image_url"]:
-                if img_url and str(img_url).startswith("http"):
-                    st.image(img_url, width=350)
+
+# row = ligne de ton DataFrame ou Supabase
+if "image_url" in row and row["image_url"]:
+    row_image_urls = json.loads(row["image_url"])  # Convertir JSON en liste
+    for img_url in row_image_urls:
+        if img_url and str(img_url).startswith("http"):
+            st.image(img_url, width=350)
 else:
     st.info("Aucune activité pour cette date")
 
@@ -191,11 +199,14 @@ if page == "📂 Liste":
 ⏰ Heure : {row['debut']} - {row['fin']}
 
 ⏱ Durée : {round(row['heures'], 2)} h
-""")
-                if "image_url" in row and row["image_url"]:
-                    for img_url in row["image_url"]:
-                        if img_url and str(img_url).startswith("http"):
-                            st.image(img_url, width=350)
+""")import json
+
+# row = ligne de ton DataFrame ou Supabase
+if "image_url" in row and row["image_url"]:
+    row_image_urls = json.loads(row["image_url"])  # Convertir JSON en liste
+    for img_url in row_image_urls:
+        if img_url and str(img_url).startswith("http"):
+            st.image(img_url, width=350)
 
             # --- COLONNE 2 : Bouton modifier ---
             with col2:
