@@ -47,9 +47,6 @@ page=st.sidebar.radio(
 ["📅 Calendrier","📂 Liste","📊 Statistiques"]
 )
 
-# =========================
-# AJOUT ACTIVITE
-# =========================
 
 # =========================
 # AJOUT ACTIVITE
@@ -57,14 +54,15 @@ page=st.sidebar.radio(
 
 st.sidebar.header("➕ Ajouter activité")
 
-date=st.sidebar.date_input("Date")
-debut=st.sidebar.time_input("Début")
-fin=st.sidebar.time_input("Fin")
+date = st.sidebar.date_input("Date")
+debut = st.sidebar.time_input("Début")
+fin = st.sidebar.time_input("Fin")
 
-desc=st.sidebar.text_area("Description")
-color=st.sidebar.color_picker("Couleur","#00ff9c")
+desc = st.sidebar.text_area("Description")
+color = st.sidebar.color_picker("Couleur", "#00ff9c")
 
-supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
+# Upload image
+image = st.sidebar.file_uploader("Image activité", type=["png","jpg","jpeg"])
 
 if st.sidebar.button("Ajouter activité"):
 
@@ -74,7 +72,10 @@ if st.sidebar.button("Ajouter activité"):
 
         file_name = f"{datetime.now().timestamp()}_{image.name}"
 
-        supabase.storage.from_("agenda-images").upload(file_name, image)
+        supabase.storage.from_("agenda-images").upload(
+            file_name,
+            image.getvalue()
+        )
 
         image_url = supabase.storage.from_("agenda-images").get_public_url(file_name)
 
