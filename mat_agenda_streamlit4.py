@@ -239,7 +239,7 @@ if page == "📂 Liste":
 
 date : {row['date']}
 
-heure : {row['debut']} → {row['fin']}
+heure : {row['debut']} - {row['fin']}
 
 Durée : {round(row['heures'], 2)} h"""
                 )
