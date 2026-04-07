@@ -234,8 +234,7 @@ if page == "📂 Liste":
 
             # --- COLONNE 1 : Affichage activité ---
             with col1:
-                st.markdown(
-                    f"""
+                st.markdown(f"""
 ### {row['description']}
 
 📅 {row['date']}
@@ -243,8 +242,7 @@ if page == "📂 Liste":
 ⏰ {row['debut']} → {row['fin']}
 
 ⏱ {round(row['heures'], 2)} h
-"""
-                )
+""")
 
                 # afficher image si elle existe
                 if "image_url" in row and row["image_url"] and str(row["image_url"]).startswith("http"):
