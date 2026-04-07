@@ -80,14 +80,22 @@ debut = st.sidebar.time_input("Début")
 fin = st.sidebar.time_input("Fin")
 desc = st.sidebar.text_area("Description")
 color = st.sidebar.color_picker("Couleur", "#00ff9c")
-image = st.sidebar.file_uploader("Image activité", type=["png","jpg","jpeg"])
+# Nouveau – support plusieurs fichiers
+images = st.sidebar.file_uploader(
+    "Images activité (plusieurs possibles)",
+    type=["png", "jpg", "jpeg"],
+    accept_multiple_files=True
+)
+
+image_urls = []
 
 if st.sidebar.button("Ajouter activité"):
-    image_url = None
-    if image is not None:
-        file_name = f"{datetime.now().timestamp()}_{image.name}"
-        supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
-        image_url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+    if images:
+        for image in images:
+            file_name = f"{datetime.now().timestamp()}_{image.name}"
+            supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
+            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+            image_urls.append(url)
 
     supabase.table("agenda").insert({
         "date": date.isoformat(),
@@ -95,7 +103,7 @@ if st.sidebar.button("Ajouter activité"):
         "fin": fin.strftime("%H:%M:%S"),
         "description": desc,
         "color": color,
-        "image_url": image_url
+        "image_url": image_urls  # <- stocke toutes les URLs
     }).execute()
     st.success("Activité ajoutée")
     st.rerun()
