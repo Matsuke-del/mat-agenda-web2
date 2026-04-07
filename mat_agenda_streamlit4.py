@@ -199,8 +199,8 @@ if page == "📂 Liste":
 ⏰ Heure : {row['debut']} - {row['fin']}
 
 ⏱ Durée : {round(row['heures'], 2)} h
-""")import json
-
+""")
+                
 # row = ligne de ton DataFrame ou Supabase
 if "image_url" in row and row["image_url"]:
     row_image_urls = json.loads(row["image_url"])  # Convertir JSON en liste
