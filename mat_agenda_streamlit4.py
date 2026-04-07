@@ -237,11 +237,11 @@ if page == "📂 Liste":
                 st.markdown(
                     f"""### {row['description']}
 
-📅 {row['date']}
+date : {row['date']}
 
-⏰ {row['debut']} → {row['fin']}
+heure : {row['debut']} → {row['fin']}
 
-⏱ Durée : {round(row['heures'], 2)} h"""
+Durée : {round(row['heures'], 2)} h"""
                 )
            
                 # afficher image si elle existe
