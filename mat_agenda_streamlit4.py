@@ -61,14 +61,18 @@ if search_date:
 # MODIFICATION ACTIVITE
 # =========================
 if "edit_id" in st.session_state:
+
     st.subheader("✏ Modifier activité")
 
-    new_date = st.date_input("Date", value=pd.to_datetime(st.session_state["edit_date"]))
+    new_date = st.date_input(
+        "Date",
+        value=pd.to_datetime(st.session_state["edit_date"])
+    )
     new_debut = st.text_input("Début", st.session_state["edit_debut"])
     new_fin = st.text_input("Fin", st.session_state["edit_fin"])
     new_desc = st.text_area("Description", value=st.session_state["edit_desc"])
 
-    # images existantes
+    # Images existantes
     images = []
     if "edit_images" in st.session_state and st.session_state["edit_images"]:
         try:
@@ -88,35 +92,33 @@ if "edit_id" in st.session_state:
         if not delete:
             new_images_list.append(img)
 
-    # ajout nouvelles images
+    # Ajout nouvelles images
     new_uploads = st.file_uploader(
         "Ajouter nouvelles images",
         type=["png","jpg","jpeg"],
         accept_multiple_files=True
     )
 
-if st.button("Enregistrer modification"):
-    # Upload nouvelles images
-    if new_uploads:
-        for img in new_uploads:
-            file_name = f"{datetime.now().timestamp()}_{img.name}"
-            supabase.storage.from_("agenda-images").upload(file_name, img.getvalue())
-            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-            new_images_list.append(url)
+    if st.button("Enregistrer modification"):
+        if new_uploads:
+            for img in new_uploads:
+                file_name = f"{int(datetime.now().timestamp()*1000)}_{img.name}"
+                supabase.storage.from_("agenda-images").upload(file_name, img.getvalue())
+                url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+                new_images_list.append(url)
 
-    # Mise à jour Supabase
-    supabase.table("agenda").update({
-        "date": new_date.isoformat(),
-        "debut": new_debut,
-        "fin": new_fin,
-        "description": new_desc,
-        "image_url": json.dumps(new_images_list)
-    }).eq("id", st.session_state["edit_id"]).execute()
+        # Mise à jour Supabase
+        supabase.table("agenda").update({
+            "date": new_date.isoformat(),
+            "debut": new_debut,
+            "fin": new_fin,
+            "description": new_desc,
+            "image_url": json.dumps(new_images_list)
+        }).eq("id", st.session_state["edit_id"]).execute()
 
-    # Supprimer l'état session et rerun
-    del st.session_state["edit_id"]
-    st.success("Activité modifiée")
-    st.experimental_rerun()  # <- ici OK, juste après le bouton
+        del st.session_state["edit_id"]
+        st.success("Activité modifiée")
+        st.experimental_rerun()
 
 # =========================
 # NAVIGATION
@@ -154,6 +156,17 @@ if images:
             st.error(f"Erreur upload {image.name}: {e}")
 
 if st.sidebar.button("Ajouter activité"):
+    image_urls = []
+    if images:
+        for image in images:
+            try:
+                file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
+                supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
+                url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+                image_urls.append(url)
+            except Exception as e:
+                st.error(f"Erreur upload {image.name}: {e}")
+
     supabase.table("agenda").insert({
         "date": date.isoformat(),
         "debut": debut.strftime("%H:%M:%S"),
@@ -162,6 +175,7 @@ if st.sidebar.button("Ajouter activité"):
         "color": color,
         "image_url": json.dumps(image_urls)
     }).execute()
+
     st.success("Activité ajoutée")
     st.experimental_rerun()
 
@@ -243,52 +257,49 @@ if page == "📂 Liste":
     if filtered_df.empty:
         st.info("Aucune activité")
     else:
-        for _, row in filtered_df.iterrows():
-            col1, col2, col3 = st.columns([6,1,1])
+for _, row in filtered_df.iterrows():
+    col1, col2, col3 = st.columns([6,1,1])
 
-            # colonne 1 : description + images
-            with col1:
-                st.markdown(f"""
+    # Colonne 1 : affichage description + images
+    with col1:
+        st.markdown(f"""
 ### {row['description']}
 
 📅 {row['date']}
 
 ⏰ {row['debut']} → {row['fin']}
 
-⏱ Durée : {round(row['heures'],2)} h
+⏱ Durée : {round(row.get('heures', 0),2)} h
 """)
-                # afficher images sur la même ligne
-                images = row.get("image_url")
-                if images:
-                    if isinstance(images,str):
-                        try:
-                            images = json.loads(images)
-                        except:
-                            images = [images]
-                    if not isinstance(images,list):
-                        images = [images]
-                    if images:
-                        cols = st.columns(len(images))
-                        for i, img in enumerate(images):
-                            if img and str(img).startswith("http"):
-                                cols[i].image(img, use_container_width=True)
+        # affichage images sur la même ligne
+        if "image_url" in row and row["image_url"]:
+            try:
+                images = json.loads(row["image_url"])
+            except:
+                images = [row["image_url"]]
 
-            # colonne 2 : modifier
-            with col2:
-                if st.button("✏", key=f"edit{row['id']}"):
-                    st.session_state["edit_id"] = row["id"]
-                    st.session_state["edit_desc"] = row["description"]
-                    st.session_state["edit_date"] = row["date"]
-                    st.session_state["edit_debut"] = row["debut"]
-                    st.session_state["edit_fin"] = row["fin"]
-                    st.session_state["edit_images"] = row.get("image_url")
-                    st.experimental_rerun()
+            if images:
+                cols = st.columns(len(images))
+                for i, img in enumerate(images):
+                    if img and str(img).startswith("http"):
+                        cols[i].image(img, use_container_width=True)
 
-            # colonne 3 : supprimer
-            with col3:
-                if st.button("❌", key=f"del{row['id']}"):
-                    supabase.table("agenda").delete().eq("id",row["id"]).execute()
-                    st.experimental_rerun()
+    # Colonne 2 : modifier
+    with col2:
+        if st.button("✏", key=f"edit{row['id']}"):
+            st.session_state["edit_id"] = row["id"]
+            st.session_state["edit_desc"] = row["description"]
+            st.session_state["edit_date"] = row["date"]
+            st.session_state["edit_debut"] = row["debut"]
+            st.session_state["edit_fin"] = row["fin"]
+            st.session_state["edit_images"] = row.get("image_url", "[]")
+            st.experimental_rerun()
+
+    # Colonne 3 : supprimer
+    with col3:
+        if st.button("❌", key=f"del{row['id']}"):
+            supabase.table("agenda").delete().eq("id", row["id"]).execute()
+            st.experimental_rerun()
 
 # =========================
 # STATISTIQUES
