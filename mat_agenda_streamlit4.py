@@ -175,12 +175,17 @@ def calc_heures(row):
     try:
         d = datetime.strptime(row["debut"], "%H:%M:%S")
         f = datetime.strptime(row["fin"], "%H:%M:%S")
-        return (f-d).seconds / 3600
+        return (f - d).seconds / 3600
     except:
         return 0
 
+# Calculer sur df
 if not df.empty:
     df["heures"] = df.apply(calc_heures, axis=1)
+
+# Calculer sur filtered_df après filtrage
+if not filtered_df.empty:
+    filtered_df["heures"] = filtered_df.apply(calc_heures, axis=1)
 
 # =========================
 # CALENDRIER
