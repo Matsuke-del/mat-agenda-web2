@@ -155,7 +155,8 @@ if page == "📅 Calendrier":
 {row['description']}""")
     if "image_url" in row and row["image_url"] and str(row["image_url"]).startswith("http"):
         st.image(row["image_url"], width=350)
-        else:
+   
+    else:
             st.info("Aucune activité pour cette date")
     else:
         st.info("Aucune activité")
