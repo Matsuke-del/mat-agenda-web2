@@ -235,51 +235,35 @@ if page == "📅 Calendrier":
             })
         calendar(events=events)
 
-    # --- AFFICHAGE DU CALENDRIER ---
-    if not cal_df.empty:
-        events = []
-        for _, row in cal_df.iterrows():
-            events.append({
-                "title": row["description"].split("\n")[0][:40],
-                "start": row["date"] + "T" + row["debut"],
-                "end": row["date"] + "T" + row["fin"],
-                "color": row["color"]
-            })
-        calendar(events=events)
-    else:
-        st.info("Aucune activité pour ce filtre")
-
-    # --- ACTIVITÉS DU JOUR ---
-    if not df.empty:
+        # afficher activités du jour
         st.subheader("📅 Voir les activités d'une date")
-        selected_date = st.date_input("Choisir une date", key="day_select")
-
+        selected_date = st.date_input("Choisir une date")
         day_activities = df[df["date"] == selected_date.strftime("%Y-%m-%d")]
 
         if not day_activities.empty:
             for _, row in day_activities.iterrows():
-                st.markdown(f"### {row['debut']} - {row['fin']}\n\n{row['description']}")
+                st.markdown(f"### {row['debut']} → {row['fin']}\n\n{row['description']}")
 
-                # affichage multi-images
+                # affichage multi-images sur la même ligne
                 images = row.get("image_url")
                 if images:
-                    if isinstance(images, str):
+                    if isinstance(images,str):
                         try:
                             images = json.loads(images)
                         except:
                             images = [images]
-                    if not isinstance(images, list):
+                    if not isinstance(images,list):
                         images = [images]
-
-                    cols = st.columns(len(images))
-                    for i, img in enumerate(images):
-                        if img and str(img).startswith("http"):
-                            cols[i].image(img, use_container_width=True)
+                    if images:
+                        cols = st.columns(len(images))
+                        for i, img in enumerate(images):
+                            if img and str(img).startswith("http"):
+                                cols[i].image(img, use_container_width=True)
         else:
             st.info("Aucune activité pour cette date")
-
     else:
         st.info("Aucune activité")
+
 
 # =========================
 # LISTE
