@@ -254,11 +254,52 @@ if page == "📅 Calendrier":
 # =========================
 if page == "📂 Liste":
     st.header("📂 Activités")
-File "/mount/src/mat-agenda-web2/mat_agenda_streamlit4.py", line 260
-  for _, row in filtered_df.iterrows():
-  ^
-IndentationError: expected an indented block after 'else' statement on line 259
+if filtered_df.empty:
+    st.info("Aucune activité")
+else:
+    for _, row in filtered_df.iterrows():
+        col1, col2, col3 = st.columns([6,1,1])
 
+        # Colonne 1 : affichage description + images
+        with col1:
+            st.markdown(f"""
+### {row['description']}
+
+📅 {row['date']}
+
+⏰ {row['debut']} → {row['fin']}
+
+⏱ Durée : {round(row.get('heures', 0),2)} h
+""")
+            # affichage images sur la même ligne
+            if "image_url" in row and row["image_url"]:
+                try:
+                    images = json.loads(row["image_url"])
+                except:
+                    images = [row["image_url"]]
+
+                if images:
+                    cols = st.columns(len(images))
+                    for i, img in enumerate(images):
+                        if img and str(img).startswith("http"):
+                            cols[i].image(img, use_container_width=True)
+
+        # Colonne 2 : modifier
+        with col2:
+            if st.button("✏", key=f"edit{row['id']}"):
+                st.session_state["edit_id"] = row["id"]
+                st.session_state["edit_desc"] = row["description"]
+                st.session_state["edit_date"] = row["date"]
+                st.session_state["edit_debut"] = row["debut"]
+                st.session_state["edit_fin"] = row["fin"]
+                st.session_state["edit_images"] = row.get("image_url", "[]")
+                st.experimental_rerun()
+
+        # Colonne 3 : supprimer
+        with col3:
+            if st.button("❌", key=f"del{row['id']}"):
+                supabase.table("agenda").delete().eq("id", row["id"]).execute()
+                st.experimental_rerun()
 # =========================
 # STATISTIQUES
 # =========================
