@@ -224,21 +224,16 @@ if not filtered_df.empty:
 # =========================
 if page == "📅 Calendrier":
     st.header("📅 Calendrier")
-
-    # Recherche
-    search = st.text_input("🔎 Recherche mot clé")
-    search_date = st.date_input("📅 Recherche par date")
-
-    # Copie du dataframe
-    cal_df = df.copy()
-
-    # Filtre texte
-    if search:
-        cal_df = cal_df[cal_df["description"].str.contains(search, case=False, na=False)]
-
-    # Filtre date
-    if search_date:
-        cal_df = cal_df[cal_df["date"] == search_date.strftime("%Y-%m-%d")]
+    if not df.empty:
+        events = []
+        for _, row in df.iterrows():
+            events.append({
+                "title": row["description"].split("\n")[0][:40],
+                "start": row["date"] + "T" + row["debut"],
+                "end": row["date"] + "T" + row["fin"],
+                "color": row["color"]
+            })
+        calendar(events=events)
 
     # --- AFFICHAGE DU CALENDRIER ---
     if not cal_df.empty:
