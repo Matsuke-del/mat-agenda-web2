@@ -20,7 +20,7 @@ st.title("🧠 MAT AGENDA TXT")
 # =========================
 # STYLE
 # =========================
-st.markdown("""
+st.markdown("""<
 <style>
 .stApp{background:#0b0f14;color:#00ff9c;}
 h1,h2,h3{color:#00ffee;}
@@ -192,8 +192,10 @@ if page == "📂 Liste":
 
 ⏱ Durée : {round(row['heures'], 2)} h
 """)
-                if "image_url" in row and row["image_url"] and str(row["image_url"]).startswith("http"):
-                    st.image(row["image_url"], width=350)
+                if "image_url" in row and row["image_url"]:
+                    for img_url in row["image_url"]:
+                        if img_url and str(img_url).startswith("http"):
+                            st.image(img_url, width=350)
 
             # --- COLONNE 2 : Bouton modifier ---
             with col2:
