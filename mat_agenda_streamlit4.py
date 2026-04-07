@@ -309,23 +309,25 @@ if page == "📂 Liste":
             # -------------------
             # COLONNE 2 : modifier
             # -------------------
-            with col2:
-                if st.button("✏", key=f"edit{row['id']}"):
-                    st.session_state["edit_id"] = row["id"]
-                    st.session_state["edit_desc"] = row["description"]
-                    st.session_state["edit_date"] = row["date"]
-                    st.session_state["edit_debut"] = row["debut"]
-                    st.session_state["edit_fin"] = row["fin"]
-                    st.session_state["edit_images"] = row.get("image_url", "[]")
-                    st.experimental_rerun()
+with col2:
+    edit_key = f"edit{row['id']}"
+    if st.button("✏", key=edit_key):
+        st.session_state["edit_id"] = row["id"]
+        st.session_state["edit_desc"] = row["description"]
+        st.session_state["edit_date"] = row["date"]
+        st.session_state["edit_debut"] = row["debut"]
+        st.session_state["edit_fin"] = row["fin"]
+        st.session_state["edit_images"] = row.get("image_url", "[]")
+        st.stop()  # <-- STOP remplace st.experimental_rerun pour éviter l'AttributeError
 
             # -------------------
             # COLONNE 3 : supprimer
             # -------------------
-            with col3:
-                if st.button("❌", key=f"del{row['id']}"):
-                    supabase.table("agenda").delete().eq("id", row["id"]).execute()
-                    st.experimental_rerun()
+with col3:
+    del_key = f"del{row['id']}"
+    if st.button("❌", key=del_key):
+        supabase.table("agenda").delete().eq("id", row["id"]).execute()
+        st.stop()  # <-- STOP ici aussi
 # =========================
 # STATISTIQUES
 # =========================
