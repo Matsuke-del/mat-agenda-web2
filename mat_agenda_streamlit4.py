@@ -182,12 +182,15 @@ else:
 # LISTE
 # =========================
 if page == "📂 Liste":
+
     st.header("📂 Activités")
 
     if df.empty:
         st.info("Aucune activité")
+
     else:
         for _, row in df.iterrows():
+            # Création des colonnes
             col1, col2, col3 = st.columns([6, 1, 1])
 
             # --- COLONNE 1 : Affichage activité ---
@@ -200,13 +203,13 @@ if page == "📂 Liste":
 
 ⏱ Durée : {round(row['heures'], 2)} h
 """)
-                
-# row = ligne de ton DataFrame ou Supabase
-if "image_url" in row and row["image_url"]:
-    row_image_urls = json.loads(row["image_url"])  # Convertir JSON en liste
-    for img_url in row_image_urls:
-        if img_url and str(img_url).startswith("http"):
-            st.image(img_url, width=350)
+                # Affichage multi-images
+                if "image_url" in row and row["image_url"]:
+                    import json
+                    row_image_urls = json.loads(row["image_url"])
+                    for img_url in row_image_urls:
+                        if img_url and str(img_url).startswith("http"):
+                            st.image(img_url, width=350)
 
             # --- COLONNE 2 : Bouton modifier ---
             with col2:
