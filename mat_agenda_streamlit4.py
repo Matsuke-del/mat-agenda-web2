@@ -203,11 +203,10 @@ if page == "📂 Liste":
 
 ⏱ Durée : {round(row['heures'], 2)} h
 """)
-                # Affichage multi-images
-                if "image_url" in row and row["image_url"]:
-import json
 
 if "image_url" in row and row["image_url"]:
+
+    import json
 
     images = row["image_url"]
 
@@ -218,7 +217,7 @@ if "image_url" in row and row["image_url"]:
         except:
             images = [images]
 
-    # si une seule image
+    # si ce n'est pas une liste
     if not isinstance(images, list):
         images = [images]
 
