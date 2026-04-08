@@ -240,54 +240,55 @@ if page == "📅 Calendrier":
     if df.empty:
         st.info("Aucune activité")
     else:
+
         # -----------------------------
         # 1) Construction des événements
         # -----------------------------
         events = []
+
         for _, row in df.iterrows():
 
-            # Titre propre (1ère ligne, max 40 chars)
             raw_title = row["description"].split("\n")[0]
             title = (raw_title[:37] + "...") if len(raw_title) > 40 else raw_title
 
-events.append({
-    "id": row["id"],
-    "title": row["description"].split("\n")[0][:40],
-    "start": row["date"] + "T" + row["debut"],
-    "end": row["date"] + "T" + row["fin"],
-    "color": row["color"]
-})
+            events.append({
+                "id": row["id"],
+                "title": title,
+                "start": row["date"] + "T" + row["debut"],
+                "end": row["date"] + "T" + row["fin"],
+                "color": row["color"]
+            })
 
         # -----------------------------
         # 2) Affichage du calendrier
         # -----------------------------
-state = calendar(
-    events=events,
-    options={
-        "locale": "fr",
-        "firstDay": 1,
-        "headerToolbar": {
-            "left": "prev,next today",
-            "center": "title",
-            "right": "dayGridMonth,timeGridWeek,timeGridDay"
-        },
-        "buttonText": {
-            "today": "Aujourd'hui",
-            "month": "Mois",
-            "week": "Semaine",
-            "day": "Jour"
-        }
-    },
-    callbacks=["eventClick"]
-)
+        state = calendar(
+            events=events,
+            options={
+                "locale": "fr",
+                "firstDay": 1,
+                "headerToolbar": {
+                    "left": "prev,next today",
+                    "center": "title",
+                    "right": "dayGridMonth,timeGridWeek,timeGridDay"
+                },
+                "buttonText": {
+                    "today": "Aujourd'hui",
+                    "month": "Mois",
+                    "week": "Semaine",
+                    "day": "Jour"
+                }
+            },
+            callbacks=["eventClick"]
+        )
 
-# =========================
-# POPUP ACTIVITE
-# =========================
-@st.dialog("📋 Activité")
-def popup_activity(row):
+        # -----------------------------
+        # 3) Popup activité
+        # -----------------------------
+        @st.dialog("📋 Activité")
+        def popup_activity(row):
 
-    st.markdown(f"""
+            st.markdown(f"""
 ### {row['description']}
 
 📅 {format_date_fr(row['date'])}
@@ -295,24 +296,25 @@ def popup_activity(row):
 ⏰ {row['debut']} → {row['fin']}
 """)
 
-    if st.button("Fermer"):
-        st.rerun()
+            if st.button("Fermer"):
+                st.rerun()
 
-
-# =========================
-# DETECTION CLIC CALENDRIER
-# =========================
-if state and state.get("eventClick"):
-
-    event_id = state["eventClick"]["event"]["id"]
-
-    row = df[df["id"] == event_id].iloc[0]
-
-    popup_activity(row)
         # -----------------------------
-        # 3) Activités du jour
+        # 4) Détection clic activité
+        # -----------------------------
+        if state and state.get("eventClick"):
+
+            event_id = state["eventClick"]["event"]["id"]
+
+            row = df[df["id"] == event_id].iloc[0]
+
+            popup_activity(row)
+
+        # -----------------------------
+        # 5) Activités du jour
         # -----------------------------
         st.subheader("📅 Voir les activités d'une date")
+
         selected_date = st.date_input("Choisir une date")
         selected_str = selected_date.strftime("%Y-%m-%d")
 
@@ -320,34 +322,34 @@ if state and state.get("eventClick"):
 
         if day_activities.empty:
             st.info("Aucune activité pour cette date")
+
         else:
-            for _, row in day_activities.iterrows():        
+            for _, row in day_activities.iterrows():
+
                 st.markdown(f"""
-        ### 📅 {format_date_fr(row['date'])}
-             
-        ⏰ {row['debut']} → {row['fin']}
-           
-        {row['description']}
-        """)
+### 📅 {format_date_fr(row['date'])}
+
+⏰ {row['debut']} → {row['fin']}
+
+{row['description']}
+""")
 
                 # -----------------------------
-                # 4) Gestion des images
+                # 6) Gestion images
                 # -----------------------------
                 images = row.get("image_url")
 
                 if images:
-                    # Convertir JSON si nécessaire
+
                     if isinstance(images, str):
                         try:
                             images = json.loads(images)
                         except:
                             images = [images]
 
-                    # Toujours une liste
                     if not isinstance(images, list):
                         images = [images]
 
-                    # Filtrer les URLs valides
                     valid_images = [
                         img for img in images
                         if isinstance(img, str) and img.startswith("http")
@@ -355,9 +357,9 @@ if state and state.get("eventClick"):
 
                     if valid_images:
                         cols = st.columns(len(valid_images))
+
                         for i, img in enumerate(valid_images):
                             cols[i].image(img, use_container_width=True)
-
 # =========================
 # LISTE
 # =========================
