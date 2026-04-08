@@ -52,23 +52,24 @@ def format_date_fr(date_str):
 # =========================
 # RECHERCHE
 # =========================
-search = st.sidebar.text_input("🔎 Recherche mot clé")
-search_date = st.sidebar.date_input(
-    "📅 Recherche par date",
-    format="DD/MM/YYYY"
+# Liste des techniciens
+techniciens = ["Alice", "Bob", "Charlie", "David"]
+
+# Choix du technicien pour l'activité
+tech_selected = st.sidebar.selectbox("🛠 Technicien", techniciens)
+
+# Ensuite la date, début, fin, description, couleur, images...
+date = st.sidebar.date_input("📅 Date", format="DD/MM/YYYY")
+debut = st.sidebar.time_input("Début")
+fin = st.sidebar.time_input("Fin")
+desc = st.sidebar.text_area("Description")
+color = st.sidebar.color_picker("Couleur", "#00ff9c")
+
+images = st.sidebar.file_uploader(
+    "Images activité (plusieurs possibles)",
+    type=["png","jpg","jpeg"],
+    accept_multiple_files=True
 )
-
-filtered_df = df.copy()
-
-if search:
-    filtered_df = filtered_df[
-        filtered_df["description"].str.contains(search, case=False, na=False)
-    ]
-
-if search_date:
-    filtered_df = filtered_df[
-        filtered_df["date"] == search_date.strftime("%Y-%m-%d")
-    ]
 
 # =========================
 # MODIFICATION ACTIVITE
@@ -186,20 +187,20 @@ if st.sidebar.button("Ajouter activité"):
     image_urls = []
     if images:
         for image in images:
-            try:
-                file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
-                supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
-                url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-                image_urls.append(url)
-            except Exception as e:
-                st.error(f"Erreur upload {image.name}: {e}")
-
+            file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
+            supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
+            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+            image_urls.append(url)
+        except Exception as e:
+            st.error(f"Erreur upload {image.name}: {e}")
+        
     supabase.table("agenda").insert({
         "date": date.isoformat(),
         "debut": debut.strftime("%H:%M:%S"),
         "fin": fin.strftime("%H:%M:%S"),
         "description": desc,
         "color": color,
+        "technicien": tech_selected,   # <-- ajout du technicien
         "image_url": json.dumps(image_urls)
     }).execute()
 
@@ -334,6 +335,8 @@ if page == "📅 Calendrier":
 
 ⏰ {row['debut']} → {row['fin']}
 
+**Technicien :** {row.get('technicien', 'Non défini')}
+
 {row['description']}
 """)
 
@@ -424,7 +427,12 @@ if page == "📂 Liste":
 📅 {format_date_fr(row['date'])}
 
 ⏰ {row['debut']} → {row['fin']}
+
+**Technicien :** {row.get('technicien', 'Non défini')}
 """)
+
+if st.button("Fermer"):
+    st.rerun()
 
                 # affichage images
                 if "image_url" in row and row["image_url"]:
