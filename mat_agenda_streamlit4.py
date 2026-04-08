@@ -289,15 +289,14 @@ if page == "📅 Calendrier":
         if day_activities.empty:
             st.info("Aucune activité pour cette date")
         else:
-            for _, row in day_activities.iterrows():
-                
-st.markdown(f"""
-### 📅 {format_date_fr(row['date'])}
-
-⏰ {row['debut']} → {row['fin']}
-
-{row['description']}
-""")
+            for _, row in day_activities.iterrows():        
+                st.markdown(f"""
+        ### 📅 {format_date_fr(row['date'])}
+             
+        ⏰ {row['debut']} → {row['fin']}
+           
+        {row['description']}
+        """)
 
                 # -----------------------------
                 # 4) Gestion des images
