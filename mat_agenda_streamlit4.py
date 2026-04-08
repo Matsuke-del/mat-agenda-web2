@@ -162,6 +162,7 @@ date = st.sidebar.date_input(
     format="DD/MM/YYYY",
     key="sidebar_date"
 )
+
 debut = st.sidebar.time_input("Début")
 fin = st.sidebar.time_input("Fin")
 desc = st.sidebar.text_area("Description")
