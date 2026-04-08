@@ -366,11 +366,14 @@ if page == "📂 Liste":
 
 # filtre mot clé
     if search_text:
-        filtered_df = filtered_df[
-            filtered_df["description"]
-            .astype(str)
-            .str.contains(search_text, case=False, na=False)
-        ]
+        mots = search_text.split()
+
+        for mot in mots:
+            filtered_df = filtered_df[
+                filtered_df["description"]
+                .astype(str)
+                .str.contains(mot, case=False, na=False)
+            ]
 
     # filtre date
     if search_date:
