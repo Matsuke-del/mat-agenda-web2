@@ -50,28 +50,6 @@ def format_date_fr(date_str):
         return date_str
         
 # =========================
-# Ajout tech
-# =========================
-# Liste des techniciens
-techniciens = ["Alice", "Bob", "Charlie", "David"]
-
-# Choix du technicien pour l'activité
-tech_selected = st.sidebar.selectbox("🛠 Technicien", techniciens)
-
-# Ensuite la date, début, fin, description, couleur, images...
-date = st.sidebar.date_input("📅 Date", format="DD/MM/YYYY")
-debut = st.sidebar.time_input("Début")
-fin = st.sidebar.time_input("Fin")
-desc = st.sidebar.text_area("Description")
-color = st.sidebar.color_picker("Couleur", "#00ff9c")
-
-images = st.sidebar.file_uploader(
-    "Images activité (plusieurs possibles)",
-    type=["png","jpg","jpeg"],
-    accept_multiple_files=True
-)
-
-# =========================
 # MODIFICATION ACTIVITE
 # =========================
 if "edit_id" in st.session_state:
@@ -157,6 +135,15 @@ page = st.sidebar.radio(
 # AJOUT ACTIVITE
 # =========================
 st.sidebar.header("➕ Ajouter activité")
+# =========================
+# Ajout tech
+# =========================
+# Liste des techniciens
+techniciens = ["Alice", "Bob", "Charlie", "David"]
+
+# Choix du technicien pour l'activité
+tech_selected = st.sidebar.selectbox("🛠 Technicien", techniciens)
+
 date = st.sidebar.date_input(
     "📅 Date",
     format="DD/MM/YYYY",
