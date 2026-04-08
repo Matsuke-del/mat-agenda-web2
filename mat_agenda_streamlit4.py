@@ -364,10 +364,12 @@ if page == "📂 Liste":
 
     filtered_df = df.copy()
 
-    # filtre mot clé
+# filtre mot clé
     if search_text:
         filtered_df = filtered_df[
-            filtered_df["description"].str.contains(search_text, case=False, na=False)
+            filtered_df["description"]
+            .astype(str)
+            .str.contains(search_text, case=False, na=False)
         ]
 
     # filtre date
