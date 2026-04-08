@@ -165,7 +165,7 @@ date = st.sidebar.date_input(
 
 debut = st.sidebar.time_input("Début", key="sidebar_debut")
 fin = st.sidebar.time_input("Fin", key="sidebar_fin")
-desc = st.sidebar.text_area("Description")
+desc = st.sidebar.text_area("Description", key="sidebar_description")
 color = st.sidebar.color_picker("Couleur", "#00ff9c")
 
 images = st.sidebar.file_uploader(
