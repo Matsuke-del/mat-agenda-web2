@@ -139,7 +139,7 @@ st.sidebar.header("➕ Ajouter activité")
 # Ajout tech
 # =========================
 # Liste des techniciens
-techniciens = ["Alice", "Bob", "Charlie", "David"]
+techniciens = ["MAT", "Sébastien"]
 
 # Choix du technicien pour l'activité
 tech_selected = st.sidebar.selectbox("🛠 Technicien", techniciens)
