@@ -371,8 +371,8 @@ if page == "📂 Liste":
 
     st.header("📂 Activités")
 
-    # recherche
-    col_search1, col_search2, col_search3 = st.columns([3,3,1])
+    # --- Recherche ---
+    col_search1, col_search2, col_search3 = st.columns([3, 3, 1])
 
     with col_search1:
         search_text = st.text_input("🔎 Recherche mot clé")
@@ -386,17 +386,16 @@ if page == "📂 Liste":
     with col_search3:
         reset = st.button("❌")
 
-    # reset recherche
+    # Reset recherche
     if reset:
         search_text = ""
         search_date = None
 
     filtered_df = df.copy()
 
-# filtre mot clé
+    # --- Filtre mot clé ---
     if search_text:
         mots = search_text.split()
-
         for mot in mots:
             filtered_df = filtered_df[
                 filtered_df["description"]
@@ -404,20 +403,22 @@ if page == "📂 Liste":
                 .str.contains(mot, case=False, na=False)
             ]
 
-    # filtre date
+    # --- Filtre date ---
     if search_date:
         filtered_df = filtered_df[
             filtered_df["date"] == search_date.strftime("%Y-%m-%d")
         ]
 
+    # --- Résultats ---
     if filtered_df.empty:
         st.info("Aucune activité trouvée")
 
     else:
         for _, row in filtered_df.iterrows():
 
-            col1, col2, col3 = st.columns([6,1,1])
+            col1, col2, col3 = st.columns([6, 1, 1])
 
+            # --- Colonne principale ---
             with col1:
                 st.markdown(f"""
 ### {row['description']}
@@ -429,10 +430,11 @@ if page == "📂 Liste":
 **Technicien :** {row.get('technicien', 'Non défini')}
 """)
 
-if st.button("Fermer"):
-    st.rerun()
+                # Bouton fermer (si tu veux le garder ici)
+                if st.button("Fermer", key=f"close{row['id']}"):
+                    st.rerun()
 
-                # affichage images
+                # --- Affichage images ---
                 if "image_url" in row and row["image_url"]:
                     try:
                         images = json.loads(row["image_url"])
@@ -442,13 +444,17 @@ if st.button("Fermer"):
                     if not isinstance(images, list):
                         images = [images]
 
-                    if images:
-                        img_cols = st.columns(len(images))
-                        for i, img in enumerate(images):
-                            if img and str(img).startswith("http"):
-                                img_cols[i].image(img, use_container_width=True)
+                    valid_images = [
+                        img for img in images
+                        if isinstance(img, str) and img.startswith("http")
+                    ]
 
-            # bouton modifier
+                    if valid_images:
+                        img_cols = st.columns(len(valid_images))
+                        for i, img in enumerate(valid_images):
+                            img_cols[i].image(img, use_container_width=True)
+
+            # --- Bouton modifier ---
             with col2:
                 if st.button("✏", key=f"edit{row['id']}"):
                     st.session_state["edit_id"] = row["id"]
@@ -459,11 +465,12 @@ if st.button("Fermer"):
                     st.session_state["edit_images"] = row.get("image_url", "[]")
                     st.stop()
 
-            # bouton supprimer
+            # --- Bouton supprimer ---
             with col3:
                 if st.button("❌", key=f"del{row['id']}"):
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
                     st.stop()
+
 # =========================
 # STATISTIQUES
 # =========================
