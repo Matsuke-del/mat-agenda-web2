@@ -80,8 +80,9 @@ if "edit_id" in st.session_state:
     st.subheader("✏ Modifier activité")
 
     new_date = st.date_input(
-        "Date",
-        value=pd.to_datetime(st.session_state["edit_date"])
+        "📅 Date",
+        value=pd.to_datetime(st.session_state["edit_date"]),
+        format="DD/MM/YYYY"
     )
     new_debut = st.text_input("Début", st.session_state["edit_debut"])
     new_fin = st.text_input("Fin", st.session_state["edit_fin"])
@@ -157,7 +158,10 @@ page = st.sidebar.radio(
 # AJOUT ACTIVITE
 # =========================
 st.sidebar.header("➕ Ajouter activité")
-date = st.sidebar.date_input("Date")
+date = st.sidebar.date_input(
+    "📅 Date",
+    format="DD/MM/YYYY"
+)
 debut = st.sidebar.time_input("Début")
 fin = st.sidebar.time_input("Fin")
 desc = st.sidebar.text_area("Description")
