@@ -195,7 +195,7 @@ if st.sidebar.button("Ajouter activité"):
     }).execute()
 
     st.success("Activité ajoutée")
-    st.experimental_rerun()
+    st.rerun()
 
 # =========================
 # TRI
