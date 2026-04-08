@@ -233,7 +233,24 @@ if page == "📅 Calendrier":
                 "end": row["date"] + "T" + row["fin"],
                 "color": row["color"]
             })
-        calendar(events=events)
+calendar(
+    events=events,
+    options={
+        "locale": "fr",
+        "firstDay": 1,
+        "headerToolbar":{
+            "left":"prev,next today",
+            "center":"title",
+            "right":"dayGridMonth,timeGridWeek,timeGridDay"
+        },
+        "buttonText":{
+            "today":"Aujourd'hui",
+            "month":"Mois",
+            "week":"Semaine",
+            "day":"Jour"
+        }
+    }
+)
 
         # afficher activités du jour
         st.subheader("📅 Voir les activités d'une date")
