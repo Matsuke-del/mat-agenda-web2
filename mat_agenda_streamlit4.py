@@ -55,7 +55,10 @@ def format_date_fr(date_str):
 # RECHERCHE
 # =========================
 search = st.sidebar.text_input("🔎 Recherche mot clé")
-search_date = st.sidebar.date_input("📅 Recherche par date")
+search_date = st.sidebar.date_input(
+    "📅 Recherche par date",
+    format="DD/MM/YYYY"
+)
 
 filtered_df = df.copy()
 
@@ -287,7 +290,13 @@ if page == "📅 Calendrier":
             st.info("Aucune activité pour cette date")
         else:
             for _, row in day_activities.iterrows():
-                st.markdown(f"### {row['debut']} → {row['fin']}\n\n{row['description']}")
+st.markdown(f"""
+### 📅 {format_date_fr(row['date'])}
+
+⏰ {row['debut']} → {row['fin']}
+
+{row['description']}
+""")
 
                 # -----------------------------
                 # 4) Gestion des images
@@ -338,7 +347,7 @@ if page == "📂 Liste":
                 st.markdown(f"""
 ### {row['description']}
 
-📅 {row['date']}
+📅 {format_date_fr(row['date'])}
 
 ⏰ {row['debut']} → {row['fin']}
 """)
