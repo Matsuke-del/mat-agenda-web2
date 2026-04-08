@@ -50,7 +50,7 @@ def format_date_fr(date_str):
         return date_str
         
 # =========================
-# RECHERCHE
+# Ajout tech
 # =========================
 # Liste des techniciens
 techniciens = ["Alice", "Bob", "Charlie", "David"]
@@ -159,7 +159,8 @@ page = st.sidebar.radio(
 st.sidebar.header("➕ Ajouter activité")
 date = st.sidebar.date_input(
     "📅 Date",
-    format="DD/MM/YYYY"
+    format="DD/MM/YYYY",
+    key="sidebar_date"
 )
 debut = st.sidebar.time_input("Début")
 fin = st.sidebar.time_input("Fin")
@@ -380,8 +381,10 @@ if page == "📂 Liste":
     with col_search2:
         search_date = st.date_input(
             "📅 Recherche par date",
-            format="DD/MM/YYYY"
-        )
+            format="DD/MM/YYYY",
+            key="search_date"
+         )
+
 
     with col_search3:
         reset = st.button("❌")
