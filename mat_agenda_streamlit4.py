@@ -191,8 +191,6 @@ if st.sidebar.button("Ajouter activité"):
             supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
             url = supabase.storage.from_("agenda-images").get_public_url(file_name)
             image_urls.append(url)
-        except Exception as e:
-            st.error(f"Erreur upload {image.name}: {e}")
         
     supabase.table("agenda").insert({
         "date": date.isoformat(),
