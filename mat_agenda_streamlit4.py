@@ -229,10 +229,6 @@ def calc_heures(row):
 if not df.empty:
     df["heures"] = df.apply(calc_heures, axis=1)
 
-# Calculer sur filtered_df après filtrage
-if not filtered_df.empty:
-    filtered_df["heures"] = filtered_df.apply(calc_heures, axis=1)
-
 # =========================
 # CALENDRIER
 # =========================
