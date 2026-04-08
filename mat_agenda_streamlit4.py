@@ -335,15 +335,52 @@ if page == "📅 Calendrier":
 # =========================
 # LISTE
 # =========================
-
+# =========================
+# LISTE
+# =========================
 if page == "📂 Liste":
 
     st.header("📂 Activités")
 
-    if df.empty:
-        st.info("Aucune activité")
+    # recherche
+    col_search1, col_search2, col_search3 = st.columns([3,3,1])
+
+    with col_search1:
+        search_text = st.text_input("🔎 Recherche mot clé")
+
+    with col_search2:
+        search_date = st.date_input(
+            "📅 Recherche par date",
+            format="DD/MM/YYYY"
+        )
+
+    with col_search3:
+        reset = st.button("❌")
+
+    # reset recherche
+    if reset:
+        search_text = ""
+        search_date = None
+
+    filtered_df = df.copy()
+
+    # filtre mot clé
+    if search_text:
+        filtered_df = filtered_df[
+            filtered_df["description"].str.contains(search_text, case=False, na=False)
+        ]
+
+    # filtre date
+    if search_date:
+        filtered_df = filtered_df[
+            filtered_df["date"] == search_date.strftime("%Y-%m-%d")
+        ]
+
+    if filtered_df.empty:
+        st.info("Aucune activité trouvée")
+
     else:
-        for _, row in df.iterrows():
+        for _, row in filtered_df.iterrows():
 
             col1, col2, col3 = st.columns([6,1,1])
 
@@ -356,7 +393,7 @@ if page == "📂 Liste":
 ⏰ {row['debut']} → {row['fin']}
 """)
 
-                # Affichage des images sur la même ligne
+                # affichage images
                 if "image_url" in row and row["image_url"]:
                     try:
                         images = json.loads(row["image_url"])
@@ -372,20 +409,20 @@ if page == "📂 Liste":
                             if img and str(img).startswith("http"):
                                 img_cols[i].image(img, use_container_width=True)
 
+            # bouton modifier
             with col2:
-                edit_key = f"edit{row['id']}"
-                if st.button("✏", key=edit_key):
+                if st.button("✏", key=f"edit{row['id']}"):
                     st.session_state["edit_id"] = row["id"]
                     st.session_state["edit_desc"] = row["description"]
                     st.session_state["edit_date"] = row["date"]
                     st.session_state["edit_debut"] = row["debut"]
                     st.session_state["edit_fin"] = row["fin"]
                     st.session_state["edit_images"] = row.get("image_url", "[]")
-                    st.stop()  # stop pour rerun propre
+                    st.stop()
 
+            # bouton supprimer
             with col3:
-                del_key = f"del{row['id']}"
-                if st.button("❌", key=del_key):
+                if st.button("❌", key=f"del{row['id']}"):
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
                     st.stop()
 # =========================
