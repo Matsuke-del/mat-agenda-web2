@@ -110,6 +110,8 @@ if "edit_id" in st.session_state:
             "debut": new_debut,
             "fin": new_fin,
             "description": new_desc,
+            "technicien": technicien if technicien else None,
+            "color": color,
             "image_url": json.dumps(new_images_list)
         }).eq("id", st.session_state["edit_id"]).execute()
 
