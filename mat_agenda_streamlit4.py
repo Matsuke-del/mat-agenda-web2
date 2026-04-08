@@ -306,9 +306,12 @@ if page == "📅 Calendrier":
 
             event_id = state["eventClick"]["event"]["id"]
 
-            row = df[df["id"] == event_id].iloc[0]
+    # convertir en string pour éviter conflit type
+            filtered = df[df["id"].astype(str) == str(event_id)]
 
-            popup_activity(row)
+            if not filtered.empty:
+                row = filtered.iloc[0]
+                popup_activity(row)
 
         # -----------------------------
         # 5) Activités du jour
