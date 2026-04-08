@@ -7,9 +7,7 @@ from supabase import create_client
 
 # =========================
 # SUPABASE
-# =========================
-from supabase import create_client
-
+# ========================
 url = "https://quamffmaxqhhtyxworou.supabase.co"
 key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
 supabase = create_client(url, key)
@@ -252,35 +250,52 @@ if page == "📅 Calendrier":
             raw_title = row["description"].split("\n")[0]
             title = (raw_title[:37] + "...") if len(raw_title) > 40 else raw_title
 
-            events.append({
-                "title": title,
-                "start": f"{row['date']}T{row['debut']}",
-                "end": f"{row['date']}T{row['fin']}",
-                "color": row.get("color", "#3A87AD")
-            })
+events.append({
+    "id": row["id"],
+    "title": row["description"].split("\n")[0][:40],
+    "start": row["date"] + "T" + row["debut"],
+    "end": row["date"] + "T" + row["fin"],
+    "color": row["color"]
+})
 
         # -----------------------------
         # 2) Affichage du calendrier
         # -----------------------------
-        calendar(
-            events=events,
-            options={
-                "locale": "fr",
-                "firstDay": 1,
-                "headerToolbar": {
-                    "left": "prev,next today",
-                    "center": "title",
-                    "right": "dayGridMonth,timeGridWeek,timeGridDay"
-                },
-                "buttonText": {
-                    "today": "Aujourd'hui",
-                    "month": "Mois",
-                    "week": "Semaine",
-                    "day": "Jour"
-                }
-            }
-        )
+state = calendar(
+    events=events,
+    options={
+        "locale": "fr",
+        "firstDay": 1,
+        "headerToolbar": {
+            "left": "prev,next today",
+            "center": "title",
+            "right": "dayGridMonth,timeGridWeek,timeGridDay"
+        },
+        "buttonText": {
+            "today": "Aujourd'hui",
+            "month": "Mois",
+            "week": "Semaine",
+            "day": "Jour"
+        }
+    },
+    callbacks=["eventClick"]
+)
 
+if state and state.get("eventClick"):
+
+    event_id = state["eventClick"]["event"]["id"]
+
+    row = df[df["id"] == event_id].iloc[0]
+
+    st.dialog("📋 Activité")
+
+    st.markdown(f"""
+### {row['description']}
+
+📅 {format_date_fr(row['date'])}
+
+⏰ {row['debut']} → {row['fin']}
+""")
         # -----------------------------
         # 3) Activités du jour
         # -----------------------------
@@ -330,11 +345,6 @@ if page == "📅 Calendrier":
                         for i, img in enumerate(valid_images):
                             cols[i].image(img, use_container_width=True)
 
-
-
-# =========================
-# LISTE
-# =========================
 # =========================
 # LISTE
 # =========================
