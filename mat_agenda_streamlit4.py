@@ -281,13 +281,11 @@ state = calendar(
     callbacks=["eventClick"]
 )
 
-if state and state.get("eventClick"):
-
-    event_id = state["eventClick"]["event"]["id"]
-
-    row = df[df["id"] == event_id].iloc[0]
-
-    st.dialog("📋 Activité")
+# =========================
+# POPUP ACTIVITE
+# =========================
+@st.dialog("📋 Activité")
+def popup_activity(row):
 
     st.markdown(f"""
 ### {row['description']}
@@ -296,6 +294,21 @@ if state and state.get("eventClick"):
 
 ⏰ {row['debut']} → {row['fin']}
 """)
+
+    if st.button("Fermer"):
+        st.rerun()
+
+
+# =========================
+# DETECTION CLIC CALENDRIER
+# =========================
+if state and state.get("eventClick"):
+
+    event_id = state["eventClick"]["event"]["id"]
+
+    row = df[df["id"] == event_id].iloc[0]
+
+    popup_activity(row)
         # -----------------------------
         # 3) Activités du jour
         # -----------------------------
