@@ -171,7 +171,8 @@ color = st.sidebar.color_picker("Couleur", "#00ff9c", key="sidebar_color")
 images = st.sidebar.file_uploader(
     "Images activité (plusieurs possibles)",
     type=["png","jpg","jpeg"],
-    accept_multiple_files=True
+    accept_multiple_files=True,
+    key="sidebar_images_upload"
 )
 
 image_urls = []
