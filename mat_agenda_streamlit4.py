@@ -44,6 +44,13 @@ def lire_data():
 
 df = lire_data()
 
+def format_date_fr(date_str):
+    try:
+        d = datetime.strptime(date_str,"%Y-%m-%d")
+        return d.strftime("%d/%m/%Y")
+    except:
+        return date_str
+        
 # =========================
 # RECHERCHE
 # =========================
@@ -224,62 +231,92 @@ if not filtered_df.empty:
 # =========================
 if page == "📅 Calendrier":
     st.header("📅 Calendrier")
-    if not df.empty:
+
+    if df.empty:
+        st.info("Aucune activité")
+    else:
+        # -----------------------------
+        # 1) Construction des événements
+        # -----------------------------
         events = []
         for _, row in df.iterrows():
-            events.append({
-                "title": row["description"].split("\n")[0][:40],
-                "start": row["date"] + "T" + row["debut"],
-                "end": row["date"] + "T" + row["fin"],
-                "color": row["color"]
-            })
-calendar(
-    events=events,
-    options={
-        "locale": "fr",
-        "firstDay": 1,
-        "headerToolbar":{
-            "left":"prev,next today",
-            "center":"title",
-            "right":"dayGridMonth,timeGridWeek,timeGridDay"
-        },
-        "buttonText":{
-            "today":"Aujourd'hui",
-            "month":"Mois",
-            "week":"Semaine",
-            "day":"Jour"
-        }
-    }
-)
 
-        # afficher activités du jour
+            # Titre propre (1ère ligne, max 40 chars)
+            raw_title = row["description"].split("\n")[0]
+            title = (raw_title[:37] + "...") if len(raw_title) > 40 else raw_title
+
+            events.append({
+                "title": title,
+                "start": f"{row['date']}T{row['debut']}",
+                "end": f"{row['date']}T{row['fin']}",
+                "color": row.get("color", "#3A87AD")
+            })
+
+        # -----------------------------
+        # 2) Affichage du calendrier
+        # -----------------------------
+        calendar(
+            events=events,
+            options={
+                "locale": "fr",
+                "firstDay": 1,
+                "headerToolbar": {
+                    "left": "prev,next today",
+                    "center": "title",
+                    "right": "dayGridMonth,timeGridWeek,timeGridDay"
+                },
+                "buttonText": {
+                    "today": "Aujourd'hui",
+                    "month": "Mois",
+                    "week": "Semaine",
+                    "day": "Jour"
+                }
+            }
+        )
+
+        # -----------------------------
+        # 3) Activités du jour
+        # -----------------------------
         st.subheader("📅 Voir les activités d'une date")
         selected_date = st.date_input("Choisir une date")
-        day_activities = df[df["date"] == selected_date.strftime("%Y-%m-%d")]
+        selected_str = selected_date.strftime("%Y-%m-%d")
 
-        if not day_activities.empty:
+        day_activities = df[df["date"] == selected_str]
+
+        if day_activities.empty:
+            st.info("Aucune activité pour cette date")
+        else:
             for _, row in day_activities.iterrows():
                 st.markdown(f"### {row['debut']} → {row['fin']}\n\n{row['description']}")
 
-                # affichage multi-images sur la même ligne
+                # -----------------------------
+                # 4) Gestion des images
+                # -----------------------------
                 images = row.get("image_url")
+
                 if images:
-                    if isinstance(images,str):
+                    # Convertir JSON si nécessaire
+                    if isinstance(images, str):
                         try:
                             images = json.loads(images)
                         except:
                             images = [images]
-                    if not isinstance(images,list):
+
+                    # Toujours une liste
+                    if not isinstance(images, list):
                         images = [images]
-                    if images:
-                        cols = st.columns(len(images))
-                        for i, img in enumerate(images):
-                            if img and str(img).startswith("http"):
-                                cols[i].image(img, use_container_width=True)
-        else:
-            st.info("Aucune activité pour cette date")
-    else:
-        st.info("Aucune activité")
+
+                    # Filtrer les URLs valides
+                    valid_images = [
+                        img for img in images
+                        if isinstance(img, str) and img.startswith("http")
+                    ]
+
+                    if valid_images:
+                        cols = st.columns(len(valid_images))
+                        for i, img in enumerate(valid_images):
+                            cols[i].image(img, use_container_width=True)
+
 
 
 # =========================
