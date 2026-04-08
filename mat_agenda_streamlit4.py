@@ -290,6 +290,7 @@ if page == "📅 Calendrier":
             st.info("Aucune activité pour cette date")
         else:
             for _, row in day_activities.iterrows():
+                
 st.markdown(f"""
 ### 📅 {format_date_fr(row['date'])}
 
