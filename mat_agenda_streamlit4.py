@@ -327,7 +327,9 @@ if page == "📅 Calendrier":
             if not filtered.empty:
                 st.session_state["show_popup"] = True
                 st.session_state["popup_row"] = filtered.iloc[0]
-
+                
+            if st.session_state.get("show_popup"):
+                popup_activity(st.session_state["popup_row"])
 # =========================
 # LISTE
 # =========================
