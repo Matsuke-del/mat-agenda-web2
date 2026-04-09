@@ -328,58 +328,6 @@ if page == "📅 Calendrier":
                 row = filtered.iloc[0]
                 popup_activity(row)
 
-        # -----------------------------
-        # 5) Activités du jour
-        # -----------------------------
-        st.subheader("📅 Voir les activités d'une date")
-
-        selected_date = st.date_input("Choisir une date")
-        selected_str = selected_date.strftime("%Y-%m-%d")
-
-        day_activities = df[df["date"] == selected_str]
-
-        if day_activities.empty:
-            st.info("Aucune activité pour cette date")
-
-        else:
-            for _, row in day_activities.iterrows():
-
-                st.markdown(f"""
-### 📅 {format_date_fr(row['date'])}
-
-⏰ {row['debut']} → {row['fin']}
-
-**Technicien :** {row.get('technicien', 'Non défini')}
-
-{row['description']}
-""")
-
-                # -----------------------------
-                # 6) Gestion images
-                # -----------------------------
-                images = row.get("image_url")
-
-                if images:
-
-                    if isinstance(images, str):
-                        try:
-                            images = json.loads(images)
-                        except:
-                            images = [images]
-
-                    if not isinstance(images, list):
-                        images = [images]
-
-                    valid_images = [
-                        img for img in images
-                        if isinstance(img, str) and img.startswith("http")
-                    ]
-
-                    if valid_images:
-                        cols = st.columns(len(valid_images))
-
-                        for i, img in enumerate(valid_images):
-                            cols[i].image(img, use_container_width=True)
 # =========================
 # LISTE
 # =========================
