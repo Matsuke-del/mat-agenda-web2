@@ -53,7 +53,6 @@ def format_date_fr(date_str):
 # =========================
 # NOTIFICATION
 # =========================
-
 def send_push(desc, date, debut, fin, tech):
 
     requests.post(
@@ -62,10 +61,11 @@ def send_push(desc, date, debut, fin, tech):
             "token": "a6vqbmhhjyzu19ay371qxhmmwuwnpp",
             "user": "uykkgtvss4kmbyuscgce5xqgdb5ufy",
             "title": "📅 Nouvelle activité",
-            "message": f"{desc}\n📆 {date}\n⏰ {debut} → {fin}\n👷 {tech}"
+            "message": f"{desc}\n📆 {date}\n⏰ {debut} → {fin}\n👷 {tech}",
+            "url": "https://mat-agenda-web2-mngwrfjcalzf3kbpdvd99n.streamlit.app",
+            "url_title": "📂 Ouvrir MAT Agenda"
         }
-    )
-    
+    )  
 # =========================
 # MODIFICATION ACTIVITE
 # =========================
