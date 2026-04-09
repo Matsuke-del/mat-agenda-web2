@@ -54,26 +54,17 @@ def format_date_fr(date_str):
 # NOTIFICATION
 # =========================
 
-def send_discord_notification(desc, date, debut, fin, tech):
+def send_push(desc, date, debut, fin, tech):
 
-    webhook_url = "https://discord.com/api/webhooks/1491672548780544134/I9268YzsiFRQ51id_Pdl18wJr9QJcQaCuFUIGZ6d6E1eZu2lxOyUEtAeoHA3fUdfecoH"
-
-    data = {
-        "embeds": [
-            {
-                "title": "📅 Nouvelle activité ajoutée",
-                "color": 5814783,
-                "fields": [
-                    {"name": "📝 Description", "value": desc, "inline": False},
-                    {"name": "📆 Date", "value": date, "inline": True},
-                    {"name": "⏰ Horaire", "value": f"{debut} → {fin}", "inline": True},
-                    {"name": "👷 Technicien", "value": tech, "inline": True}
-                ]
-            }
-        ]
-    }
-
-    requests.post(webhook_url, json=data)
+    requests.post(
+        "https://api.pushover.net/1/messages.json",
+        data={
+            "token": "a6vqbmhhjyzu19ay371qxhmmwuwnpp",
+            "user": "uykkgtvss4kmbyuscgce5xqgdb5ufy",
+            "title": "📅 Nouvelle activité",
+            "message": f"{desc}\n📆 {date}\n⏰ {debut} → {fin}\n👷 {tech}"
+        }
+    )
     
 # =========================
 # MODIFICATION ACTIVITE
@@ -226,18 +217,13 @@ if st.sidebar.button("Ajouter activité"):
         "image_url": json.dumps(image_urls)
     }).execute()
 
-    # 🔔 Notification Discord
-    send_discord_notification(
+    send_push(
         desc,
         date.strftime("%d/%m/%Y"),
         debut.strftime("%H:%M"),
         fin.strftime("%H:%M"),
         tech_selected
     )
-
-    st.success("Activité ajoutée")
-
-    st.rerun()
 
 # =========================
 # TRI
