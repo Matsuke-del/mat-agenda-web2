@@ -307,22 +307,9 @@ if "popup_row" not in st.session_state:
     st.session_state["popup_row"] = None
 
 
-# ----------------------------------------------------
-# 0) Initialisation des variables d'état
-# ----------------------------------------------------
-if "show_popup" not in st.session_state:
-    st.session_state["show_popup"] = False
-
-if "popup_row" not in st.session_state:
-    st.session_state["popup_row"] = None
-
-# Si "state" n'existe pas encore, on le définit à None
-state = locals().get("state", None)
-
-
-# ----------------------------------------------------
-# 1) Popup activité
-# ----------------------------------------------------
+# -----------------------------
+# 3) Popup activité
+# -----------------------------
 @st.dialog("📋 Activité")
 def popup_activity(row):
 
@@ -334,33 +321,23 @@ def popup_activity(row):
 ⏰ {row['debut']} → {row['fin']}
 """)
 
-    # Bouton fermer dans le popup
     if st.button("Fermer", key="close_popup"):
-        st.session_state["show_popup"] = False
-        st.session_state["popup_row"] = None
         st.rerun()
 
 
-# ----------------------------------------------------
-# 2) Détection du clic sur un événement du calendrier
-# ----------------------------------------------------
-if state and state.get("eventClick") and not st.session_state["show_popup"]:
+# -----------------------------
+# 4) Détection clic activité
+# -----------------------------
+if state and state.get("eventClick"):
 
     event_id = state["eventClick"]["event"]["id"]
 
+    # convertir en string pour éviter les conflits de type
     filtered = df[df["id"].astype(str) == str(event_id)]
 
     if not filtered.empty:
-        st.session_state["popup_row"] = filtered.iloc[0]
-        st.session_state["show_popup"] = True
-
-
-# ----------------------------------------------------
-# 3) Affichage du popup si demandé
-# ----------------------------------------------------
-if st.session_state["show_popup"] and st.session_state["popup_row"] is not None:
-    popup_activity(st.session_state["popup_row"])
-
+        row = filtered.iloc[0]
+        popup_activity(row)
 
 # =========================
 # LISTE
