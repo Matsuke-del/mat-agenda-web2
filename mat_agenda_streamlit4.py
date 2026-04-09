@@ -297,39 +297,43 @@ if page == "📅 Calendrier":
             callbacks=["eventClick"]
         )
 
-        # -----------------------------
-        # 3) Popup activité
-        # -----------------------------
-        @st.dialog("📋 Activité")
-        def popup_activity(row):
+       # -----------------------------
+# 3) Popup activité
+# -----------------------------
+@st.dialog("📋 Activité")
+def popup_activity(row):
 
-            st.markdown(f"""
-        ### {row['description']}
+    st.markdown(f"""
+### {row['description']}
 
-        📅 {format_date_fr(row['date'])}
+📅 {format_date_fr(row['date'])}
 
-        ⏰ {row['debut']} → {row['fin']}
-        """)
+⏰ {row['debut']} → {row['fin']}
+""")
 
-        if st.button("Fermer"):
-            st.session_state["show_popup"] = False
-            st.rerun()
+    # Bouton fermer dans le popup
+    if st.button("Fermer", key="close_popup"):
+        st.session_state["show_popup"] = False
+        st.rerun()
 
-        # -----------------------------
-        # 4) Détection clic activité
-        # -----------------------------
-        if state and state.get("eventClick"):
 
-            event_id = state["eventClick"]["event"]["id"]
+# -----------------------------
+# 4) Détection clic activité
+# -----------------------------
+if state and state.get("eventClick"):
 
-            filtered = df[df["id"].astype(str) == str(event_id)]
+    event_id = state["eventClick"]["event"]["id"]
 
-            if not filtered.empty:
-                st.session_state["show_popup"] = True
-                st.session_state["popup_row"] = filtered.iloc[0]
-                
-            if st.session_state.get("show_popup"):
-                popup_activity(st.session_state["popup_row"])
+    filtered = df[df["id"].astype(str) == str(event_id)]
+
+    if not filtered.empty:
+        st.session_state["show_popup"] = True
+        st.session_state["popup_row"] = filtered.iloc[0]
+
+# Affichage du popup si demandé
+if st.session_state.get("show_popup"):
+    popup_activity(st.session_state["popup_row"])
+
 # =========================
 # LISTE
 # =========================
