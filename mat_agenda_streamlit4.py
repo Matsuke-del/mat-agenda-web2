@@ -56,7 +56,7 @@ def format_date_fr(date_str):
 
 def send_discord_notification(desc, date, debut, fin, tech):
 
-    webhook_url = "https://discord.com/api/webhooks/1491666753674154186/PaTmUpRSAES4sgr9T7CPBZaN2nBnZIU1miZayeD4_LP0qem66Jt08DSqOLt_Y_XpTxLv"
+    webhook_url = "https://discord.com/api/webhooks/1491672548780544134/I9268YzsiFRQ51id_Pdl18wJr9QJcQaCuFUIGZ6d6E1eZu2lxOyUEtAeoHA3fUdfecoH"
 
     data = {
         "embeds": [
