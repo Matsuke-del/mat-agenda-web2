@@ -307,7 +307,7 @@ if "popup_row" not in st.session_state:
     st.session_state["popup_row"] = None
 
 # -----------------------------
-# 3) Popup activité
+# 3) Popup activité (sans bouton)
 # -----------------------------
 @st.dialog("📋 Activité")
 def popup_activity(row):
@@ -319,10 +319,6 @@ def popup_activity(row):
 
 ⏰ {row['debut']} → {row['fin']}
 """)
-
-    # Bouton pour fermer le popup
-    if st.button("Fermer", key="close_popup"):
-        st.rerun()
 
 
 # -----------------------------
@@ -338,6 +334,7 @@ if state and state.get("eventClick"):
     if not filtered.empty:
         row = filtered.iloc[0]
         popup_activity(row)
+
 
 # =========================
 # LISTE
