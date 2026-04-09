@@ -311,9 +311,6 @@ if page == "📅 Calendrier":
 ⏰ {row['debut']} → {row['fin']}
 """)
 
-            if st.button("Fermer"):
-                st.rerun()
-
         # -----------------------------
         # 4) Détection clic activité
         # -----------------------------
