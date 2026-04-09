@@ -434,20 +434,53 @@ if page == "📂 Liste":
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
                     st.stop()
 
-# =========================
-# STATISTIQUES
-# =========================
+
+
 if page == "📊 Statistiques":
+
     st.header("📊 Statistiques")
+
     if df.empty:
         st.info("Pas de données")
+
     else:
-        col1,col2 = st.columns(2)
+
+        # =========================
+        # METRICS GLOBAL
+        # =========================
+        col1, col2 = st.columns(2)
+
         with col1:
             st.metric("⏱ Temps total", f"{round(df['heures'].sum(),2)} h")
+
         with col2:
             st.metric("📅 Activités", len(df))
+
+        # =========================
+        # HEURES PAR TECHNICIEN
+        # =========================
+        st.subheader("👷 Heures par technicien")
+
+        tech_stats = df.groupby("technicien")["heures"].sum().sort_values(ascending=False)
+
+        st.bar_chart(tech_stats)
+
+        # =========================
+        # ACTIVITES PAR TECHNICIEN
+        # =========================
+        st.subheader("📅 Activités par technicien")
+
+        tech_count = df["technicien"].value_counts()
+
+        st.bar_chart(tech_count)
+
+        # =========================
+        # HEURES PAR MOIS
+        # =========================
         df["mois"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m")
-        stats = df.groupby("mois")["heures"].sum()
-        st.subheader("Heures par mois")
-        st.bar_chart(stats)
+
+        stats_mois = df.groupby("mois")["heures"].sum()
+
+        st.subheader("📊 Heures par mois")
+
+        st.bar_chart(stats_mois)
