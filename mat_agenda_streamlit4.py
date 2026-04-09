@@ -446,41 +446,41 @@ if page == "📊 Statistiques":
     else:
 
         # =========================
-        # METRICS GLOBAL
+        # CHOIX TECHNICIEN
+        # =========================
+        techniciens = ["Tous"] + sorted(df["technicien"].dropna().unique())
+
+        tech_selected = st.selectbox(
+            "👷 Choisir technicien",
+            techniciens
+        )
+
+        # =========================
+        # FILTRE DATA
+        # =========================
+        df_filtered = df.copy()
+
+        if tech_selected != "Tous":
+            df_filtered = df[df["technicien"] == tech_selected]
+
+        # =========================
+        # METRICS
         # =========================
         col1, col2 = st.columns(2)
 
         with col1:
-            st.metric("⏱ Temps total", f"{round(df['heures'].sum(),2)} h")
+            st.metric("⏱ Temps total", f"{round(df_filtered['heures'].sum(),2)} h")
 
         with col2:
-            st.metric("📅 Activités", len(df))
-
-        # =========================
-        # HEURES PAR TECHNICIEN
-        # =========================
-        st.subheader("👷 Heures par technicien")
-
-        tech_stats = df.groupby("technicien")["heures"].sum().sort_values(ascending=False)
-
-        st.bar_chart(tech_stats)
-
-        # =========================
-        # ACTIVITES PAR TECHNICIEN
-        # =========================
-        st.subheader("📅 Activités par technicien")
-
-        tech_count = df["technicien"].value_counts()
-
-        st.bar_chart(tech_count)
+            st.metric("📅 Activités", len(df_filtered))
 
         # =========================
         # HEURES PAR MOIS
         # =========================
-        df["mois"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m")
+        df_filtered["mois"] = pd.to_datetime(df_filtered["date"]).dt.strftime("%Y-%m")
 
-        stats_mois = df.groupby("mois")["heures"].sum()
+        stats = df_filtered.groupby("mois")["heures"].sum()
 
-        st.subheader("📊 Heures par mois")
+        st.subheader("Heures par mois")
 
-        st.bar_chart(stats_mois)
+        st.bar_chart(stats)
