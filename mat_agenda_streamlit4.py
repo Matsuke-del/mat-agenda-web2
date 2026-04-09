@@ -306,7 +306,6 @@ if "show_popup" not in st.session_state:
 if "popup_row" not in st.session_state:
     st.session_state["popup_row"] = None
 
-
 # -----------------------------
 # 3) Popup activité
 # -----------------------------
@@ -321,6 +320,7 @@ def popup_activity(row):
 ⏰ {row['debut']} → {row['fin']}
 """)
 
+    # Bouton pour fermer le popup
     if st.button("Fermer", key="close_popup"):
         st.rerun()
 
