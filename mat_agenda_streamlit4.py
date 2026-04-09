@@ -297,8 +297,18 @@ if page == "📅 Calendrier":
             callbacks=["eventClick"]
         )
 
-       # -----------------------------
-# 3) Popup activité
+# -----------------------------
+# 0) Initialisation état
+# -----------------------------
+if "show_popup" not in st.session_state:
+    st.session_state["show_popup"] = False
+
+if "popup_row" not in st.session_state:
+    st.session_state["popup_row"] = None
+
+
+# -----------------------------
+# 1) Popup activité
 # -----------------------------
 @st.dialog("📋 Activité")
 def popup_activity(row):
@@ -311,16 +321,16 @@ def popup_activity(row):
 ⏰ {row['debut']} → {row['fin']}
 """)
 
-    # Bouton fermer dans le popup
     if st.button("Fermer", key="close_popup"):
         st.session_state["show_popup"] = False
+        st.session_state["popup_row"] = None
         st.rerun()
 
 
 # -----------------------------
-# 4) Détection clic activité
+# 2) Détection clic activité
 # -----------------------------
-if state and state.get("eventClick"):
+if state and state.get("eventClick") and not st.session_state["show_popup"]:
 
     event_id = state["eventClick"]["event"]["id"]
 
@@ -330,8 +340,11 @@ if state and state.get("eventClick"):
         st.session_state["show_popup"] = True
         st.session_state["popup_row"] = filtered.iloc[0]
 
-# Affichage du popup si demandé
-if st.session_state.get("show_popup"):
+
+# -----------------------------
+# 3) Affichage conditionnel du popup
+# -----------------------------
+if st.session_state["show_popup"] and st.session_state["popup_row"] is not None:
     popup_activity(st.session_state["popup_row"])
 
 # =========================
