@@ -345,8 +345,6 @@ if state.get("eventClick"):
     if not filtered.empty:
         row = filtered.iloc[0]
         popup_activity(row)
-row)
-
 
 # =========================
 # LISTE
