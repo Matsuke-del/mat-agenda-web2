@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import json
+import requests
 from datetime import datetime
 from streamlit_calendar import calendar
 from supabase import create_client
@@ -49,6 +50,31 @@ def format_date_fr(date_str):
     except:
         return date_str
         
+# =========================
+# NOTIFICATION
+# =========================
+
+def send_discord_notification(desc, date, debut, fin, tech):
+
+    webhook_url = "TON_WEBHOOK_DISCORD"
+
+    data = {
+        "embeds": [
+            {
+                "title": "📅 Nouvelle activité ajoutée",
+                "color": 5814783,
+                "fields": [
+                    {"name": "📝 Description", "value": desc, "inline": False},
+                    {"name": "📆 Date", "value": date, "inline": True},
+                    {"name": "⏰ Horaire", "value": f"{debut} → {fin}", "inline": True},
+                    {"name": "👷 Technicien", "value": tech, "inline": True}
+                ]
+            }
+        ]
+    }
+
+    requests.post(webhook_url, json=data)
+    
 # =========================
 # MODIFICATION ACTIVITE
 # =========================
@@ -137,9 +163,7 @@ page = st.sidebar.radio(
 # AJOUT ACTIVITE
 # =========================
 st.sidebar.header("➕ Ajouter activité")
-# =========================
-# Ajout tech
-# =========================
+
 # Liste des techniciens
 techniciens = ["MAT", "Sébastien"]
 
@@ -176,25 +200,43 @@ if images:
             st.error(f"Erreur upload {image.name}: {e}")
 
 if st.sidebar.button("Ajouter activité"):
+
     image_urls = []
+
     if images:
         for image in images:
             file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
-            supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
+
+            supabase.storage.from_("agenda-images").upload(
+                file_name,
+                image.getvalue()
+            )
+
             url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+
             image_urls.append(url)
-        
+
     supabase.table("agenda").insert({
         "date": date.isoformat(),
         "debut": debut.strftime("%H:%M:%S"),
         "fin": fin.strftime("%H:%M:%S"),
         "description": desc,
         "color": color,
-        "technicien": tech_selected,   # <-- ajout du technicien
+        "technicien": tech_selected,
         "image_url": json.dumps(image_urls)
     }).execute()
 
+    # 🔔 Notification Discord
+    send_discord_notification(
+        desc,
+        date.strftime("%d/%m/%Y"),
+        debut.strftime("%H:%M"),
+        fin.strftime("%H:%M"),
+        tech_selected
+    )
+
     st.success("Activité ajoutée")
+
     st.rerun()
 
 # =========================
