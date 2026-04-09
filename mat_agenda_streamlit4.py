@@ -307,17 +307,6 @@ if "popup_row" not in st.session_state:
     st.session_state["popup_row"] = None
 
 # -----------------------------
-# 0) Récupération du state du calendrier
-# -----------------------------
-# IMPORTANT : cette ligne doit être exécutée AVANT la détection du clic
-state = calendar(events=events, options=options)
-
-# Si jamais calendar() renvoie None (rare mais possible)
-if state is None:
-    state = {}
-
-
-# -----------------------------
 # 3) Popup activité
 # -----------------------------
 @st.dialog("📋 Activité")
@@ -331,20 +320,28 @@ def popup_activity(row):
 ⏰ {row['debut']} → {row['fin']}
 """)
 
+    # Bouton fermer dans le popup
+    if st.button("Fermer", key="close_popup"):
+        st.session_state["show_popup"] = False
+        st.rerun()
+
 
 # -----------------------------
 # 4) Détection clic activité
 # -----------------------------
-if state.get("eventClick"):
+if state and state.get("eventClick"):
 
     event_id = state["eventClick"]["event"]["id"]
 
-    # convertir en string pour éviter les conflits de type
     filtered = df[df["id"].astype(str) == str(event_id)]
 
     if not filtered.empty:
-        row = filtered.iloc[0]
-        popup_activity(row)
+        st.session_state["show_popup"] = True
+        st.session_state["popup_row"] = filtered.iloc[0]
+
+# Affichage du popup si demandé
+if st.session_state.get("show_popup"):
+    popup_activity(st.session_state["popup_row"])
 
 # =========================
 # LISTE
