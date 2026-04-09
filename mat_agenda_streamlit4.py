@@ -297,22 +297,13 @@ if page == "📅 Calendrier":
             callbacks=["eventClick"]
         )
 
-# -----------------------------
-# 0) Initialisation état
-# -----------------------------
-if "show_popup" not in st.session_state:
-    st.session_state["show_popup"] = False
+        # -----------------------------
+        # 3) Popup activité
+        # -----------------------------
+        @st.dialog("📋 Activité")
+        def popup_activity(row):
 
-if "popup_row" not in st.session_state:
-    st.session_state["popup_row"] = None
-
-# -----------------------------
-# 3) Popup activité
-# -----------------------------
-@st.dialog("📋 Activité")
-def popup_activity(row):
-
-    st.markdown(f"""
+            st.markdown(f"""
 ### {row['description']}
 
 📅 {format_date_fr(row['date'])}
@@ -320,29 +311,19 @@ def popup_activity(row):
 ⏰ {row['debut']} → {row['fin']}
 """)
 
-    # Bouton fermer dans le popup
-    if st.button("Fermer", key="close_popup"):
-        st.session_state["show_popup"] = False
-        st.rerun()
+            if st.button("Fermer"):
+                st.rerun()
 
+        # -----------------------------
+        # 4) Détection clic activité
+        # -----------------------------
+        if state and state.get("eventClick"):
 
-# -----------------------------
-# 4) Détection clic activité
-# -----------------------------
-    if state and state.get("eventClick"):
+            event_id = state["eventClick"]["event"]["id"]
 
-        event_id = state["eventClick"]["event"]["id"]
+            row = df[df["id"] == event_id].iloc[0]
 
-    # convertir en string pour éviter conflit type
-        filtered = df[df["id"].astype(str) == str(event_id)]
-
-        if not filtered.empty:
-            row = filtered.iloc[0]
             popup_activity(row)
-
-# Affichage du popup si demandé
-    if st.session_state.get("show_popup"):
-        popup_activity(st.session_state["popup_row"])
 
 # =========================
 # LISTE
