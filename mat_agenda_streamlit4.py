@@ -300,9 +300,6 @@ if page == "📅 Calendrier":
         # -----------------------------
         # 3) Popup activité
         # -----------------------------
-        # -----------------------------
-        # 3) Popup activité
-        # -----------------------------
         @st.dialog("📋 Activité")
         def popup_activity(row):
 
@@ -328,10 +325,10 @@ if page == "📅 Calendrier":
             filtered = df[df["id"].astype(str) == str(event_id)]
 
             if not filtered.empty:
-            st.session_state["show_popup"] = True
-            st.session_state["popup_row"] = filtered.iloc[0]
+                st.session_state["show_popup"] = True
+                st.session_state["popup_row"] = filtered.iloc[0]
 
-        if st.session_state.get("show_popup"):
+       if st.session_state.get("show_popup"):
             popup_activity(st.session_state["popup_row"])
 # =========================
 # LISTE
