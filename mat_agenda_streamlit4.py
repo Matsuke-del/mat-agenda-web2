@@ -329,20 +329,20 @@ def popup_activity(row):
 # -----------------------------
 # 4) Détection clic activité
 # -----------------------------
-if state and state.get("eventClick"):
+    if state and state.get("eventClick"):
 
-    event_id = state["eventClick"]["event"]["id"]
+        event_id = state["eventClick"]["event"]["id"]
 
     # convertir en string pour éviter conflit type
-    filtered = df[df["id"].astype(str) == str(event_id)]
+        filtered = df[df["id"].astype(str) == str(event_id)]
 
-    if not filtered.empty:
-        row = filtered.iloc[0]
-        popup_activity(row)
+        if not filtered.empty:
+            row = filtered.iloc[0]
+            popup_activity(row)
 
 # Affichage du popup si demandé
-if st.session_state.get("show_popup"):
-    popup_activity(st.session_state["popup_row"])
+    if st.session_state.get("show_popup"):
+        popup_activity(st.session_state["popup_row"])
 
 # =========================
 # LISTE
