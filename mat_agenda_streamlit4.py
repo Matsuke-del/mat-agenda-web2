@@ -192,7 +192,6 @@ page = st.sidebar.radio(
     "Navigation",
     ["📅 Calendrier", "📂 Liste", "📊 Statistiques"]
 )
-
 if st.session_state.get("open_tasks"):
     popup_tasks()
     st.session_state["open_tasks"] = False
