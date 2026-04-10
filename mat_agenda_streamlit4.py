@@ -56,14 +56,15 @@ def format_date_fr(date_str):
 @st.dialog("📝 Tâches à prévoir")
 def popup_tasks():
 
-    # =========================
-    # LECTURE DEPUIS SUPABASE
-    # =========================
-    response = supabase.table("agenda").select("id, Tâches à prévoir").limit(1).execute()
+    # lecture supabase
+    response = supabase.table("agenda").select('id, "Tâches à prévoir"').limit(1).execute()
 
     tasks = []
+    row_id = None
 
     if response.data:
+        row_id = response.data[0]["id"]
+
         raw = response.data[0].get("Tâches à prévoir")
 
         if raw:
@@ -72,9 +73,6 @@ def popup_tasks():
             except:
                 tasks = []
 
-    # =========================
-    # AFFICHAGE
-    # =========================
     st.subheader("📋 Liste des tâches")
 
     new_tasks = []
@@ -95,35 +93,29 @@ def popup_tasks():
     else:
         st.info("Aucune tâche")
 
-    # =========================
-    # AJOUT
-    # =========================
+    # ajout
     st.subheader("➕ Ajouter une tâche")
 
     new_task = st.text_input("Nouvelle tâche")
 
     if st.button("Ajouter tâche"):
-        if new_task.strip():
+        if new_task.strip() and row_id:
+
             new_tasks.append(new_task)
 
             supabase.table("agenda").update({
                 "Tâches à prévoir": json.dumps(new_tasks)
-            }).eq("id", response.data[0]["id"]).execute()
+            }).eq("id", row_id).execute()
 
             st.rerun()
 
-    # =========================
-    # SAUVEGARDE SUPPRESSION
-    # =========================
-    if tasks != new_tasks:
+    # sauvegarde suppression
+    if tasks != new_tasks and row_id:
 
         supabase.table("agenda").update({
             "Tâches à prévoir": json.dumps(new_tasks)
-        }).eq("id", response.data[0]["id"]).execute()
+        }).eq("id", row_id).execute()
 
-    # =========================
-    # FERMER
-    # =========================
     if st.button("Fermer"):
         st.rerun()
         
