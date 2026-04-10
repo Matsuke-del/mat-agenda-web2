@@ -49,7 +49,50 @@ def format_date_fr(date_str):
         return d.strftime("%d/%m/%Y")
     except:
         return date_str
-        
+
+# =========================
+# POPUP TACHES A PREVOIR
+# =========================
+@st.dialog("📝 Tâches à prévoir")
+def popup_tasks():
+
+    # init
+    if "tasks" not in st.session_state:
+        st.session_state["tasks"] = []
+
+    st.subheader("📋 Liste des tâches")
+
+    # affichage
+    if st.session_state["tasks"]:
+        for i, task in enumerate(st.session_state["tasks"]):
+
+            col1, col2 = st.columns([6,1])
+
+            with col1:
+                st.write(f"• {task}")
+
+            with col2:
+                if st.button("❌", key=f"del_task_{i}"):
+                    st.session_state["tasks"].pop(i)
+                    st.rerun()
+    else:
+        st.info("Aucune tâche")
+
+    # ajout
+    st.subheader("➕ Ajouter une tâche")
+
+    new_task = st.text_input("Nouvelle tâche")
+
+    if st.button("Ajouter"):
+        if new_task.strip():
+            st.session_state["tasks"].append(new_task)
+            st.rerun()
+
+    # fermer
+    if st.button("Fermer"):
+        st.rerun()
+
+
 # =========================
 # NOTIFICATION
 # =========================
@@ -153,48 +196,7 @@ page = st.sidebar.radio(
 if st.session_state.get("open_tasks"):
     popup_tasks()
     st.session_state["open_tasks"] = False
-# =========================
-# POPUP TACHES A PREVOIR
-# =========================
-@st.dialog("📝 Tâches à prévoir")
-def popup_tasks():
 
-    # init
-    if "tasks" not in st.session_state:
-        st.session_state["tasks"] = []
-
-    st.subheader("📋 Liste des tâches")
-
-    # affichage
-    if st.session_state["tasks"]:
-        for i, task in enumerate(st.session_state["tasks"]):
-
-            col1, col2 = st.columns([6,1])
-
-            with col1:
-                st.write(f"• {task}")
-
-            with col2:
-                if st.button("❌", key=f"del_task_{i}"):
-                    st.session_state["tasks"].pop(i)
-                    st.rerun()
-    else:
-        st.info("Aucune tâche")
-
-    # ajout
-    st.subheader("➕ Ajouter une tâche")
-
-    new_task = st.text_input("Nouvelle tâche")
-
-    if st.button("Ajouter"):
-        if new_task.strip():
-            st.session_state["tasks"].append(new_task)
-            st.rerun()
-
-    # fermer
-    if st.button("Fermer"):
-        st.rerun()
-        
 # =========================
 # AJOUT ACTIVITE
 # =========================
