@@ -192,9 +192,9 @@ page = st.sidebar.radio(
     "Navigation",
     ["📅 Calendrier", "📂 Liste", "📊 Statistiques"]
 )
-if st.session_state.get("open_tasks"):
+
+if st.button("📝 Tâches à prévoir"):
     popup_tasks()
-    st.session_state["open_tasks"] = False
 
 # =========================
 # AJOUT ACTIVITE
