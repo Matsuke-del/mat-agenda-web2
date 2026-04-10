@@ -150,6 +150,52 @@ page = st.sidebar.radio(
     ["📅 Calendrier", "📂 Liste", "📊 Statistiques"]
 )
 
+if st.button("📝 Tâches à prévoir"):
+    st.session_state["open_tasks"] = True
+
+# =========================
+# POPUP TACHES A PREVOIR
+# =========================
+
+@st.dialog("📝 Tâches à prévoir")
+def popup_tasks():
+
+    # initialisation
+    if "tasks" not in st.session_state:
+        st.session_state["tasks"] = []
+
+    st.subheader("Liste des tâches")
+
+    # affichage des tâches
+    if st.session_state["tasks"]:
+        for i, task in enumerate(st.session_state["tasks"]):
+
+            col1, col2 = st.columns([6,1])
+
+            with col1:
+                st.write(f"• {task}")
+
+            with col2:
+                if st.button("❌", key=f"del_task_{i}"):
+                    st.session_state["tasks"].pop(i)
+                    st.rerun()
+    else:
+        st.info("Aucune tâche pour le moment")
+
+    # ajout tâche
+    st.subheader("➕ Ajouter une tâche")
+
+    new_task = st.text_input("Nouvelle tâche")
+
+    if st.button("Ajouter tâche"):
+        if new_task.strip():
+            st.session_state["tasks"].append(new_task)
+            st.rerun()
+
+    # fermer
+    if st.button("Fermer"):
+        st.rerun()
+        
 # =========================
 # AJOUT ACTIVITE
 # =========================
