@@ -142,17 +142,49 @@ if "edit_id" in st.session_state:
 
     st.subheader("✏ Modifier activité")
 
+    # ------------------------
+    # CHAMPS PRINCIPAUX
+    # ------------------------
     new_date = st.date_input(
         "📅 Date",
         value=pd.to_datetime(st.session_state["edit_date"]),
         format="DD/MM/YYYY"
     )
+
     new_debut = st.text_input("Début", st.session_state["edit_debut"])
     new_fin = st.text_input("Fin", st.session_state["edit_fin"])
-    new_desc = st.text_area("Description", value=st.session_state["edit_desc"])
 
-    # Images existantes
+    new_desc = st.text_area(
+        "Description",
+        value=st.session_state["edit_desc"]
+    )
+
+    # ------------------------
+    # TECHNICIEN
+    # ------------------------
+    techniciens = ["MAT", "Sébastien"]
+
+    tech_selected = st.selectbox(
+        "🛠 Technicien",
+        techniciens,
+        index=techniciens.index(
+            st.session_state.get("edit_technicien", "MAT")
+        )
+    )
+
+    # ------------------------
+    # COULEUR
+    # ------------------------
+    color = st.color_picker(
+        "Couleur",
+        st.session_state.get("edit_color", "#00ff9c")
+    )
+
+    # ------------------------
+    # IMAGES EXISTANTES
+    # ------------------------
     images = []
+
     if "edit_images" in st.session_state and st.session_state["edit_images"]:
         try:
             images = json.loads(st.session_state["edit_images"])
@@ -160,57 +192,81 @@ if "edit_id" in st.session_state:
             images = []
 
     st.subheader("Images existantes")
+
     new_images_list = []
 
     for i, img in enumerate(images):
+
         col1, col2 = st.columns([5, 1])
+
         with col1:
             st.image(img, width=250)
+
         with col2:
             delete = st.checkbox("❌", key=f"delimg{i}")
+
         if not delete:
             new_images_list.append(img)
 
-    # Ajout nouvelles images
+    # ------------------------
+    # AJOUT NOUVELLES IMAGES
+    # ------------------------
     new_uploads = st.file_uploader(
         "Ajouter nouvelles images",
-        type=["png","jpg","jpeg"],
+        type=["png", "jpg", "jpeg"],
         accept_multiple_files=True
     )
 
+    # ------------------------
+    # SAVE
+    # ------------------------
     if st.button("Enregistrer modification"):
+
         # Upload nouvelles images
         if new_uploads:
             for img in new_uploads:
+
                 file_name = f"{int(datetime.now().timestamp()*1000)}_{img.name}"
+
                 try:
-                    supabase.storage.from_("agenda-images").upload(file_name, img.getvalue())
+                    supabase.storage.from_("agenda-images").upload(
+                        file_name,
+                        img.getvalue()
+                    )
+
                     url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+
                     new_images_list.append(url)
+
                 except Exception as e:
                     st.error(f"Erreur upload {img.name}: {e}")
 
-        # Mise à jour Supabase
+        # UPDATE SUPABASE
         supabase.table("agenda").update({
             "date": new_date.isoformat(),
             "debut": new_debut,
             "fin": new_fin,
             "description": new_desc,
-            "technicien": technicien if technicien else None,
+            "technicien": tech_selected,
             "color": color,
             "image_url": json.dumps(new_images_list)
         }).eq("id", st.session_state["edit_id"]).execute()
 
-        # Nettoyage session_state
-        st.session_state.pop("edit_id", None)
-        st.session_state.pop("edit_desc", None)
-        st.session_state.pop("edit_date", None)
-        st.session_state.pop("edit_debut", None)
-        st.session_state.pop("edit_fin", None)
-        st.session_state.pop("edit_images", None)
+        # CLEAN SESSION
+        for key in [
+            "edit_id",
+            "edit_desc",
+            "edit_date",
+            "edit_debut",
+            "edit_fin",
+            "edit_images",
+            "edit_technicien",
+            "edit_color"
+        ]:
+            st.session_state.pop(key, None)
 
-        st.success("Activité modifiée ! Veuillez rafraîchir la page pour voir les changements.")
-
+        st.success("✅ Activité modifiée")
+        st.rerun()
 # =========================
 # NAVIGATION
 # =========================
@@ -492,12 +548,17 @@ if page == "📂 Liste":
             # --- Bouton modifier ---
             with col2:
                 if st.button("✏", key=f"edit{row['id']}"):
+
                     st.session_state["edit_id"] = row["id"]
                     st.session_state["edit_desc"] = row["description"]
                     st.session_state["edit_date"] = row["date"]
                     st.session_state["edit_debut"] = row["debut"]
                     st.session_state["edit_fin"] = row["fin"]
                     st.session_state["edit_images"] = row.get("image_url", "[]")
+                     # 👉 AJOUT ICI
+                    st.session_state["edit_technicien"] = row.get("technicien", "MAT")
+                    st.session_state["edit_color"] = row.get("color", "#00ff9c")
+
                     st.stop()
 
             # --- Bouton supprimer ---
