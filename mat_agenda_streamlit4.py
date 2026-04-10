@@ -56,15 +56,31 @@ def format_date_fr(date_str):
 @st.dialog("📝 Tâches à prévoir")
 def popup_tasks():
 
-    # init
-    if "tasks" not in st.session_state:
-        st.session_state["tasks"] = []
+    # =========================
+    # LECTURE DEPUIS SUPABASE
+    # =========================
+    response = supabase.table("agenda").select("id, Tâches à prévoir").limit(1).execute()
 
+    tasks = []
+
+    if response.data:
+        raw = response.data[0].get("Tâches à prévoir")
+
+        if raw:
+            try:
+                tasks = json.loads(raw)
+            except:
+                tasks = []
+
+    # =========================
+    # AFFICHAGE
+    # =========================
     st.subheader("📋 Liste des tâches")
 
-    # affichage
-    if st.session_state["tasks"]:
-        for i, task in enumerate(st.session_state["tasks"]):
+    new_tasks = []
+
+    if tasks:
+        for i, task in enumerate(tasks):
 
             col1, col2 = st.columns([6,1])
 
@@ -72,27 +88,45 @@ def popup_tasks():
                 st.write(f"• {task}")
 
             with col2:
-                if st.button("❌", key=f"del_task_{i}"):
-                    st.session_state["tasks"].pop(i)
-                    st.rerun()
+                delete = st.button("❌", key=f"del_task_{i}")
+
+            if not delete:
+                new_tasks.append(task)
     else:
         st.info("Aucune tâche")
 
-    # ajout
+    # =========================
+    # AJOUT
+    # =========================
     st.subheader("➕ Ajouter une tâche")
 
     new_task = st.text_input("Nouvelle tâche")
 
-    if st.button("Ajouter"):
+    if st.button("Ajouter tâche"):
         if new_task.strip():
-            st.session_state["tasks"].append(new_task)
+            new_tasks.append(new_task)
+
+            supabase.table("agenda").update({
+                "Tâches à prévoir": json.dumps(new_tasks)
+            }).eq("id", response.data[0]["id"]).execute()
+
             st.rerun()
 
-    # fermer
+    # =========================
+    # SAUVEGARDE SUPPRESSION
+    # =========================
+    if tasks != new_tasks:
+
+        supabase.table("agenda").update({
+            "Tâches à prévoir": json.dumps(new_tasks)
+        }).eq("id", response.data[0]["id"]).execute()
+
+    # =========================
+    # FERMER
+    # =========================
     if st.button("Fermer"):
         st.rerun()
-
-
+        
 # =========================
 # NOTIFICATION
 # =========================
