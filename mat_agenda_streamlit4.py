@@ -405,28 +405,25 @@ if page == "📅 Calendrier":
         # -----------------------------
         # 2) Affichage du calendrier
         # -----------------------------
-        # -----------------------------
-# 2) Affichage du calendrier
-# -----------------------------
-state = calendar(
-    events=events,
-    options={
-        "locale": "fr",
-        "firstDay": 1,
-        "headerToolbar": {
-            "left": "prev,next today",
-            "center": "title",
-            "right": "dayGridMonth,timeGridWeek,timeGridDay"
-        },
-        "buttonText": {
-            "today": "Aujourd'hui",
-            "month": "Mois",
-            "week": "Semaine",
-            "day": "Jour"
-        }
-    },
-    callbacks=["eventClick"]
-)
+        state = calendar(
+            events=events,
+            options={
+                "locale": "fr",
+                "firstDay": 1,
+                "headerToolbar": {
+                    "left": "prev,next today",
+                    "center": "title",
+                    "right": "dayGridMonth,timeGridWeek,timeGridDay"
+                },
+                "buttonText": {
+                    "today": "Aujourd'hui",
+                    "month": "Mois",
+                    "week": "Semaine",
+                    "day": "Jour"
+                }
+            },
+            callbacks=["eventClick"]
+        )
 
 # -----------------------------
 # 3) Popup activité
