@@ -513,7 +513,7 @@ if page == "📂 Liste":
             col1, col2, col3 = st.columns([6, 1, 1])
 
             # --- Colonne principale ---
-            with col1:
+    with col1:
     st.text_area(
         "Description",
         value=row["description"],
