@@ -427,14 +427,8 @@ if page == "📅 Calendrier":
         @st.dialog("📋 Activité")
         def popup_activity(row):
 
-            st.text_area(
-                "📄 Description (copiable)",
-                value=row["description"],
-                height=max(150, min(400, len(row["description"]) // 2)),
-                key=f"desc_{row['id']}",
-                disabled=True
-            )
-            # 🔥 BOUTON COPIER ICI
+            st.subheader("📄 Description")
+
             st.code(row["description"])
 
             st.write(f"📅 {format_date_fr(row['date'])}")
@@ -509,14 +503,8 @@ if page == "📂 Liste":
 
             # --- Colonne principale ---
         with col1:
-            st.text_area(
-                "📄 Description (copiable)",
-                value=row["description"],
-                height=max(150, min(400, len(row["description"]) // 2)),
-                key=f"desc_{row['id']}",
-                disabled=True
-            )
-            # 🔥 BOUTON COPIER ICI
+            st.subheader("📄 Description")
+
         st.code(row["description"])
 
         st.write(f"📅 {format_date_fr(row['date'])}")
