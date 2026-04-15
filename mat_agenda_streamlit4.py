@@ -434,6 +434,8 @@ if page == "📅 Calendrier":
                 key=f"desc_{row['id']}",
                 disabled=True
             )
+            # 🔥 BOUTON COPIER ICI
+            st.code(row["description"])
 
             st.write(f"📅 {format_date_fr(row['date'])}")
             st.write(f"⏰ {row['debut']} → {row['fin']}")
@@ -514,6 +516,8 @@ if page == "📂 Liste":
                 key=f"desc_{row['id']}",
                 disabled=True
             )
+            # 🔥 BOUTON COPIER ICI
+        st.code(row["description"])
 
         st.write(f"📅 {format_date_fr(row['date'])}")
         st.write(f"⏰ {row['debut']} → {row['fin']}")
