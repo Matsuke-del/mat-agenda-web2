@@ -514,40 +514,40 @@ if page == "📂 Liste":
 
             # --- Colonne principale ---
             with col1:
-                st.text_area(
-    "Description",
-    value=row["description"],
-    height=120,
-    key=f"desc_{row['id']}"
-)
+    st.text_area(
+        "Description",
+        value=row["description"],
+        height=120,
+        key=f"desc_{row['id']}"
+    )
 
-st.write(f"📅 {format_date_fr(row['date'])}")
-st.write(f"⏰ {row['debut']} → {row['fin']}")
-st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
+    st.write(f"📅 {format_date_fr(row['date'])}")
+    st.write(f"⏰ {row['debut']} → {row['fin']}")
+    st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
 
-                # Bouton fermer (si tu veux le garder ici)
-                if st.button("Fermer", key=f"close{row['id']}"):
-                    st.rerun()
+    # Bouton fermer
+    if st.button("Fermer", key=f"close{row['id']}"):
+        st.rerun()
 
-                # --- Affichage images ---
-                if "image_url" in row and row["image_url"]:
-                    try:
-                        images = json.loads(row["image_url"])
-                    except:
-                        images = [row["image_url"]]
+    # --- Affichage images ---
+    if "image_url" in row and row["image_url"]:
+        try:
+            images = json.loads(row["image_url"])
+        except:
+            images = [row["image_url"]]
 
-                    if not isinstance(images, list):
-                        images = [images]
+        if not isinstance(images, list):
+            images = [images]
 
-                    valid_images = [
-                        img for img in images
-                        if isinstance(img, str) and img.startswith("http")
-                    ]
+        valid_images = [
+            img for img in images
+            if isinstance(img, str) and img.startswith("http")
+        ]
 
-                    if valid_images:
-                        img_cols = st.columns(len(valid_images))
-                        for i, img in enumerate(valid_images):
-                            img_cols[i].image(img, use_container_width=True)
+        if valid_images:
+            img_cols = st.columns(len(valid_images))
+            for i, img in enumerate(valid_images):
+                img_cols[i].image(img, use_container_width=True)
 
             # --- Bouton modifier ---
             with col2:
