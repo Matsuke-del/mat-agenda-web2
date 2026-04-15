@@ -614,4 +614,4 @@ if page == "📊 Statistiques":
 
         st.subheader("Heures par mois")
 
-        st.bar_chart(stats)"
+        st.bar_chart(stats)
