@@ -378,15 +378,15 @@ if not df.empty:
 # CALENDRIER
 # =========================
 if page == "📅 Calendrier":
+
     st.header("📅 Calendrier")
 
     if df.empty:
         st.info("Aucune activité")
+
     else:
 
-        # -----------------------------
-        # 1) Construction des événements
-        # -----------------------------
+        # 1) Events
         events = []
 
         for _, row in df.iterrows():
@@ -402,9 +402,7 @@ if page == "📅 Calendrier":
                 "color": row["color"]
             })
 
-        # -----------------------------
-        # 2) Affichage du calendrier
-        # -----------------------------
+        # 2) Calendar
         state = calendar(
             events=events,
             options={
@@ -425,33 +423,29 @@ if page == "📅 Calendrier":
             callbacks=["eventClick"]
         )
 
-# -----------------------------
-# 3) Popup activité
-# -----------------------------
-@st.dialog("📋 Activité")
-def popup_activity(row):
+        # 3) Popup activité
+        @st.dialog("📋 Activité")
+        def popup_activity(row):
 
-    st.text_area(
-        "Description",
-        value=row["description"],
-        height=120
-    )
+            st.text_area(
+                "Description",
+                value=row["description"],
+                height=120
+            )
 
-    st.write(f"📅 {format_date_fr(row['date'])}")
-    st.write(f"⏰ {row['debut']} → {row['fin']}")
+            st.write(f"📅 {format_date_fr(row['date'])}")
+            st.write(f"⏰ {row['debut']} → {row['fin']}")
 
-# -----------------------------
-# 4) Détection clic activité
-# -----------------------------
-if state and state.get("eventClick"):
+        # 4) CLICK EVENT 👉 DOIT ÊTRE ICI
+        if state and state.get("eventClick"):
 
-    event_id = state["eventClick"]["event"]["id"]
+            event_id = state["eventClick"]["event"]["id"]
 
-    filtered = df[df["id"].astype(str) == str(event_id)]
+            filtered = df[df["id"].astype(str) == str(event_id)]
 
-    if not filtered.empty:
-        row = filtered.iloc[0]
-        popup_activity(row)
+            if not filtered.empty:
+                row = filtered.iloc[0]
+                popup_activity(row)
 
 # =========================
 # LISTE
