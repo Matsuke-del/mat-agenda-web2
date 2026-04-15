@@ -431,13 +431,14 @@ if page == "📅 Calendrier":
         @st.dialog("📋 Activité")
         def popup_activity(row):
 
-            st.markdown(f"""
-### {row['description']}
+            st.text_area(
+    "Description",
+    value=row["description"],
+    height=120
+)
 
-📅 {format_date_fr(row['date'])}
-
-⏰ {row['debut']} → {row['fin']}
-""")
+st.write(f"📅 {format_date_fr(row['date'])}")
+st.write(f"⏰ {row['debut']} → {row['fin']}")
 
         # -----------------------------
         # 4) Détection clic activité
@@ -511,15 +512,16 @@ if page == "📂 Liste":
 
             # --- Colonne principale ---
             with col1:
-                st.markdown(f"""
-### {row['description']}
+                st.text_area(
+    "Description",
+    value=row["description"],
+    height=120,
+    key=f"desc_{row['id']}"
+)
 
-📅 {format_date_fr(row['date'])}
-
-⏰ {row['debut']} → {row['fin']}
-
-**Technicien :** {row.get('technicien', 'Non défini')}
-""")
+st.write(f"📅 {format_date_fr(row['date'])}")
+st.write(f"⏰ {row['debut']} → {row['fin']}")
+st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
 
                 # Bouton fermer (si tu veux le garder ici)
                 if st.button("Fermer", key=f"close{row['id']}"):
