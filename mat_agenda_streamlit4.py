@@ -428,9 +428,11 @@ if page == "📅 Calendrier":
         def popup_activity(row):
 
             st.text_area(
-                "Description",
+                "📄 Description (copiable)",
                 value=row["description"],
-                height=120
+                height=max(150, min(400, len(row["description"]) // 2)),
+                key=f"desc_{row['id']}",
+                disabled=True
             )
 
             st.write(f"📅 {format_date_fr(row['date'])}")
@@ -506,10 +508,11 @@ if page == "📂 Liste":
             # --- Colonne principale ---
         with col1:
             st.text_area(
-                "Description",
+                "📄 Description (copiable)",
                 value=row["description"],
-                height=120,
-                key=f"desc_{row['id']}"
+                height=max(150, min(400, len(row["description"]) // 2)),
+                key=f"desc_{row['id']}",
+                disabled=True
             )
 
         st.write(f"📅 {format_date_fr(row['date'])}")
