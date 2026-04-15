@@ -405,53 +405,56 @@ if page == "📅 Calendrier":
         # -----------------------------
         # 2) Affichage du calendrier
         # -----------------------------
-        state = calendar(
-            events=events,
-            options={
-                "locale": "fr",
-                "firstDay": 1,
-                "headerToolbar": {
-                    "left": "prev,next today",
-                    "center": "title",
-                    "right": "dayGridMonth,timeGridWeek,timeGridDay"
-                },
-                "buttonText": {
-                    "today": "Aujourd'hui",
-                    "month": "Mois",
-                    "week": "Semaine",
-                    "day": "Jour"
-                }
-            },
-            callbacks=["eventClick"]
-        )
-
         # -----------------------------
-        # 3) Popup activité
-        # -----------------------------
-        @st.dialog("📋 Activité")
-        def popup_activity(row):
-
-            st.text_area(
-    "Description",
-    value=row["description"],
-    height=120
+# 2) Affichage du calendrier
+# -----------------------------
+state = calendar(
+    events=events,
+    options={
+        "locale": "fr",
+        "firstDay": 1,
+        "headerToolbar": {
+            "left": "prev,next today",
+            "center": "title",
+            "right": "dayGridMonth,timeGridWeek,timeGridDay"
+        },
+        "buttonText": {
+            "today": "Aujourd'hui",
+            "month": "Mois",
+            "week": "Semaine",
+            "day": "Jour"
+        }
+    },
+    callbacks=["eventClick"]
 )
 
-st.write(f"📅 {format_date_fr(row['date'])}")
-st.write(f"⏰ {row['debut']} → {row['fin']}")
-        # -----------------------------
-        # 4) Détection clic activité
-        # -----------------------------
-        if state and state.get("eventClick"):
+# -----------------------------
+# 3) Popup activité
+# -----------------------------
+@st.dialog("📋 Activité")
+def popup_activity(row):
 
-            event_id = state["eventClick"]["event"]["id"]
+    st.text_area(
+        "Description",
+        value=row["description"],
+        height=120
+    )
 
-    # convertir en string pour éviter conflit type
-            filtered = df[df["id"].astype(str) == str(event_id)]
+    st.write(f"📅 {format_date_fr(row['date'])}")
+    st.write(f"⏰ {row['debut']} → {row['fin']}")
 
-            if not filtered.empty:
-                row = filtered.iloc[0]
-                popup_activity(row)
+# -----------------------------
+# 4) Détection clic activité
+# -----------------------------
+if state and state.get("eventClick"):
+
+    event_id = state["eventClick"]["event"]["id"]
+
+    filtered = df[df["id"].astype(str) == str(event_id)]
+
+    if not filtered.empty:
+        row = filtered.iloc[0]
+        popup_activity(row)
 
 # =========================
 # LISTE
