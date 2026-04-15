@@ -504,13 +504,13 @@ if page == "📂 Liste":
             col1, col2, col3 = st.columns([6, 1, 1])
 
             # --- Colonne principale ---
-    with col1:
-        st.text_area(
-            "Description",
-            value=row["description"],
-            height=120,
-            key=f"desc_{row['id']}"
-        )
+        with col1:
+            st.text_area(
+                "Description",
+                value=row["description"],
+                height=120,
+                key=f"desc_{row['id']}"
+            )
 
     st.write(f"📅 {format_date_fr(row['date'])}")
     st.write(f"⏰ {row['debut']} → {row['fin']}")
