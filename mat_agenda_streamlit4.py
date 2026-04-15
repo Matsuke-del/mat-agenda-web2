@@ -439,7 +439,6 @@ if page == "📅 Calendrier":
 
 st.write(f"📅 {format_date_fr(row['date'])}")
 st.write(f"⏰ {row['debut']} → {row['fin']}")
-
         # -----------------------------
         # 4) Détection clic activité
         # -----------------------------
