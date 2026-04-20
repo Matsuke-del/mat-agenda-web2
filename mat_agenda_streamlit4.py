@@ -449,113 +449,78 @@ if page == "📅 Calendrier":
 # LISTE
 # =========================
 if page == "📂 Liste":
-
     st.header("📂 Activités")
-
-    # --- Recherche ---
     col_search1, col_search2, col_search3 = st.columns([3, 3, 1])
-
+    
     with col_search1:
         search_text = st.text_input("🔎 Recherche mot clé")
-
     with col_search2:
-        search_date = st.date_input(
-            "📅 Recherche par date",
-            format="DD/MM/YYYY",
-            key="search_date"
-         )
-
-
+        search_date = st.date_input("📅 Recherche par date", format="DD/MM/YYYY", key="search_date")
     with col_search3:
         reset = st.button("❌")
-
-    # Reset recherche
+    
     if reset:
         search_text = ""
         search_date = None
 
     filtered_df = df.copy()
 
-    # --- Filtre mot clé ---
     if search_text:
         mots = search_text.split()
         for mot in mots:
-            filtered_df = filtered_df[
-                filtered_df["description"]
-                .astype(str)
-                .str.contains(mot, case=False, na=False)
-            ]
+            filtered_df = filtered_df[filtered_df["description"].astype(str).str.contains(mot, case=False, na=False)]
 
-    # --- Filtre date ---
     if search_date:
-        filtered_df = filtered_df[
-            filtered_df["date"] == search_date.strftime("%Y-%m-%d")
-        ]
+        filtered_df = filtered_df[filtered_df["date"] == search_date.strftime("%Y-%m-%d")]
 
-    # --- Résultats ---
     if filtered_df.empty:
         st.info("Aucune activité trouvée")
-
     else:
         for _, row in filtered_df.iterrows():
-
             col1, col2, col3 = st.columns([6, 1, 1])
+            with col1:
+                st.subheader("📄 Description")
 
-            # --- Colonne principale ---
-        with col1:
-            st.subheader("📄 Description")
+            st.code(row["description"])
+            st.write(f"📅 {format_date_fr(row['date'])}")
+            st.write(f"⏰ {row['debut']} → {row['fin']}")
+            st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
 
-        st.code(row["description"])
+            if st.button("Fermer", key=f"close{row['id']}"):
+                st.rerun()
 
-        st.write(f"📅 {format_date_fr(row['date'])}")
-        st.write(f"⏰ {row['debut']} → {row['fin']}")
-        st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
+            if "image_url" in row and row["image_url"]:
+                try:
+                    images = json.loads(row["image_url"])
+                except:
+                    images = [row["image_url"]]
+                
+                if not isinstance(images, list):
+                    images = [images]
 
-        # Bouton fermer
-        if st.button("Fermer", key=f"close{row['id']}"):
-            st.rerun()
+                valid_images = [img for img in images if isinstance(img, str) and img.startswith("http")]
+                if valid_images:
+                    img_cols = st.columns(len(valid_images))
+                    for i, img in enumerate(valid_images):
+                        img_cols[i].image(img, use_container_width=True)
 
-        # --- Affichage images ---
-        if "image_url" in row and row["image_url"]:
-            try:
-                images = json.loads(row["image_url"])
-            except:
-                images = [row["image_url"]]
-
-            if not isinstance(images, list):
-                images = [images]
-
-            valid_images = [
-                img for img in images
-                if isinstance(img, str) and img.startswith("http")
-            ]
-
-            if valid_images:
-                img_cols = st.columns(len(valid_images))
-                for i, img in enumerate(valid_images):
-                    img_cols[i].image(img, use_container_width=True)
-
-            # --- Bouton modifier ---
             with col2:
                 if st.button("✏", key=f"edit{row['id']}"):
-
                     st.session_state["edit_id"] = row["id"]
                     st.session_state["edit_desc"] = row["description"]
                     st.session_state["edit_date"] = row["date"]
                     st.session_state["edit_debut"] = row["debut"]
                     st.session_state["edit_fin"] = row["fin"]
                     st.session_state["edit_images"] = row.get("image_url", "[]")
-                     # 👉 AJOUT ICI
                     st.session_state["edit_technicien"] = row.get("technicien", "MAT")
                     st.session_state["edit_color"] = row.get("color", "#00ff9c")
-
                     st.stop()
 
-            # --- Bouton supprimer ---
             with col3:
                 if st.button("❌", key=f"del{row['id']}"):
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
                     st.stop()
+
 
 
 
