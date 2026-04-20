@@ -377,7 +377,6 @@ if not df.empty:
 # =========================
 # 📋 POPUP ACTIVITÉ (UNIQUE)
 # =========================
-@st.dialog("📋 Activité")
 def popup_activity(row):
 
     st.subheader("📄 Description")
@@ -388,37 +387,37 @@ def popup_activity(row):
     st.write(f"👷 {row.get('technicien','Non défini')}")
 
     # =========================
-    # 🖼️ IMAGES (SCROLL HORIZONTAL)
+    # 🖼️ IMAGES
     # =========================
-st.subheader("🖼️ Images")
+    st.subheader("🖼️ Images")
 
-raw_img = row.get("image_url", "[]")
+    raw_img = row.get("image_url", "[]")
 
-try:
-    imgs = json.loads(raw_img) if raw_img else []
-except:
-    imgs = [raw_img]
+    try:
+        imgs = json.loads(raw_img) if raw_img else []
+    except:
+        imgs = [raw_img]
 
-if imgs:
-    html = '<div style="display:flex;overflow-x:auto;gap:10px;padding:10px;">'
+    if imgs:
+        html = '<div style="display:flex;overflow-x:auto;gap:10px;padding:10px;">'
 
-    for url in imgs:
-        html += f"""
-        <a href="{url}" target="_blank">
-            <img src="{url}" style="
-                height:200px;
-                border-radius:10px;
-                cursor:pointer;
-            ">
-        </a>
-        """
+        for url in imgs:
+            html += f"""
+            <a href="{url}" target="_blank">
+                <img src="{url}" style="
+                    height:200px;
+                    border-radius:10px;
+                    cursor:pointer;
+                ">
+            </a>
+            """
 
-    html += "</div>"
+        html += "</div>"
 
-    st.markdown(html, unsafe_allow_html=True)
+        st.markdown(html, unsafe_allow_html=True)
 
-else:
-    st.info("Aucune image")
+    else:
+        st.info("Aucune image")
 
 # =========================
 # 📅 CALENDRIER
