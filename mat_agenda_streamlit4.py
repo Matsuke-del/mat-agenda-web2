@@ -390,34 +390,34 @@ def popup_activity(row):
     # =========================
     # 🖼️ IMAGES
     # =========================
-if "image_url" in row and row["image_url"]:
-    try:
-        images = json.loads(row["image_url"])
-    except:
-        images = [row["image_url"]]
+    if "image_url" in row and row["image_url"]:
+        try:
+            images = json.loads(row["image_url"])
+        except:
+            images = [row["image_url"]]
+  
+        if not isinstance(images, list):
+            images = [images]
+ 
+        valid_images = [
+            img for img in images
+            if isinstance(img, str) and img.startswith("http")
+        ]
 
-    if not isinstance(images, list):
-        images = [images]
+        if valid_images:
+            img_cols = st.columns(len(valid_images))
 
-    valid_images = [
-        img for img in images
-        if isinstance(img, str) and img.startswith("http")
-    ]
+            for i, img in enumerate(valid_images):
+                with img_cols[i]:
+                    st.image(img, use_container_width=True)
 
-    if valid_images:
-        img_cols = st.columns(len(valid_images))
-
-        for i, img in enumerate(valid_images):
-            with img_cols[i]:
-                st.image(img, use_container_width=True)
-
-                if st.button(f"🔍 Agrandir {i}", key=f"zoom_{i}"):
+                    if st.button(f"🔍 Agrandir {i}", key=f"zoom_{i}"):
                     
-                    @st.dialog("🖼️ Image agrandie")
-                    def show_image_popup(image_url):
-                        st.image(image_url, use_container_width=True)
+                        @st.dialog("🖼️ Image agrandie")
+                        def show_image_popup(image_url):
+                            st.image(image_url, use_container_width=True)
 
-                    show_image_popup(img)
+                        show_image_popup(img)
 # =========================
 # 📅 CALENDRIER
 # =========================
