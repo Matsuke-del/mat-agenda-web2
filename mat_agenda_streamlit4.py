@@ -421,12 +421,14 @@ def popup_activity(row):
         if valid_images:
             img_cols = st.columns(len(valid_images))
 
-        for i, img in enumerate(valid_images):
-            with img_cols[i]:
-                st.image(img, use_container_width=True)
+            for i, img in enumerate(valid_images):
+                with img_cols[i]:
+                    st.image(img, use_container_width=True)
 
-                if st.button("🔍 Agrandir", key=f"zoom_cal_{row['id']}_{i}"):
-                    st.session_state.zoom_image = img
+                    if st.button("🔍 Agrandir", key=f"zoom_cal_{row['id']}_{i}"):
+                        st.session_state.zoom_image = img
+                        popup_zoom_image()
+
 # =========================
 # 📅 CALENDRIER
 # =========================
