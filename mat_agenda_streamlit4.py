@@ -391,6 +391,20 @@ if not df.empty:
 # =========================
 # 📋 POPUP ACTIVITÉ (UNIQUE)
 # =========================
+# =========================
+# 🖼️ POPUP ZOOM IMAGE
+# =========================
+@st.dialog("🖼️ Image en grand")
+def popup_zoom_image():
+    img = st.session_state.get("zoom_image", None)
+
+    if img:
+        st.image(img, use_container_width=True)
+
+    if st.button("Fermer"):
+        st.session_state.zoom_image = None
+        st.rerun()
+
 @st.dialog("📋 Activité")
 def popup_activity(row):
 
