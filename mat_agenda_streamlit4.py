@@ -33,9 +33,6 @@ h1,h2,h3{color:#00ffee;}
 </style>
 """, unsafe_allow_html=True)
 
-if st.session_state.get("show_zoom", False):
-    popup_zoom_image()
-
     raise StreamlitAPIException("Dialogs may not be nested inside other dialogs.")
 # =========================
 # LECTURE SUPABASE
@@ -674,3 +671,6 @@ if page == "📊 Statistiques":
         st.subheader("Heures par mois")
 
         st.bar_chart(stats)
+        
+if st.session_state.get("show_zoom", False):
+    popup_zoom_image()
