@@ -377,6 +377,7 @@ if not df.empty:
 # =========================
 # 📋 POPUP ACTIVITÉ (UNIQUE)
 # =========================
+@st.dialog("📋 Activité")
 def popup_activity(row):
 
     st.subheader("📄 Description")
