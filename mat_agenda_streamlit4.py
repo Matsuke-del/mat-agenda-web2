@@ -419,32 +419,32 @@ def popup_activity(row):
     # =========================
     # 🖼️ IMAGES
     # =========================
-if "image_url" in row and row["image_url"]:
-    try:
-        images = json.loads(row["image_url"])
-    except:
-        images = [row["image_url"]]
+    if "image_url" in row and row["image_url"]:
+        try:
+            images = json.loads(row["image_url"])
+        except:
+            images = [row["image_url"]]
 
-    if not isinstance(images, list):
-        images = [images]
+        if not isinstance(images, list):
+            images = [images]
 
-    valid_images = [
-        img for img in images
-        if isinstance(img, str) and img.startswith("http")
-    ]
+        valid_images = [
+            img for img in images
+            if isinstance(img, str) and img.startswith("http")
+        ]
 
-    if valid_images:
-        img_cols = st.columns(len(valid_images))
+        if valid_images:
+            img_cols = st.columns(len(valid_images))
 
-        for i, img in enumerate(valid_images):
-            with img_cols[i]:
-                st.image(img, use_container_width=True)
+            for i, img in enumerate(valid_images):
+                with img_cols[i]:
+                    st.image(img, use_container_width=True)
 
-                # Bouton compact, icône seule
-                if st.button("🔍", key=f"zoom_cal_{row['id']}_{i}", help="Agrandir l'image"):
-                    st.session_state.zoom_image = img
-                    st.session_state.show_zoom = True
-                    st.rerun()
+                    # Bouton compact, icône seule
+                    if st.button("🔍", key=f"zoom_cal_{row['id']}_{i}", help="Agrandir l'image"):
+                        st.session_state.zoom_image = img
+                        st.session_state.show_zoom = True
+                        st.rerun()
 
 # =========================
 # 📅 CALENDRIER
