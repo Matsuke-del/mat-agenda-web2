@@ -440,10 +440,16 @@ def popup_activity(row):
                 with img_cols[i]:
                     st.image(img, use_container_width=True)
 
-                    if st.button("🔍 Agrandir", key=f"zoom_cal_{row['id']}_{i}"):
-                        st.session_state.zoom_image = img
-                        st.session_state.show_zoom = True
-                        st.rerun()
+                    st.markdown(
+                        f"""
+                        <a href="#" onclick="window.parent.postMessage({{'zoom':'{img}'}}, '*')" 
+                           style="font-size:20px; text-decoration:none; display:block; text-align:center;">
+                           🔍
+                        </a>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
 
 # =========================
 # 📅 CALENDRIER
