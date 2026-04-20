@@ -33,8 +33,10 @@ h1,h2,h3{color:#00ffee;}
 </style>
 """, unsafe_allow_html=True)
 
-if "zoom_image" not in st.session_state:
-    st.session_state.zoom_image = None
+if st.session_state.get("show_zoom", False):
+    popup_zoom_image()
+
+    raise StreamlitAPIException("Dialogs may not be nested inside other dialogs.")
 # =========================
 # LECTURE SUPABASE
 # =========================
@@ -402,9 +404,12 @@ def popup_zoom_image():
         st.image(img, use_container_width=True)
 
     if st.button("Fermer"):
+        st.session_state.show_zoom = False
         st.session_state.zoom_image = None
         st.rerun()
-
+# =========================
+# 📋 POPUP ACTIVITÉ
+# =========================
 @st.dialog("📋 Activité")
 def popup_activity(row):
 
@@ -441,7 +446,8 @@ def popup_activity(row):
 
                     if st.button("🔍 Agrandir", key=f"zoom_cal_{row['id']}_{i}"):
                         st.session_state.zoom_image = img
-                        popup_zoom_image()
+                        st.session_state.show_zoom = True
+                        st.rerun()
 
 # =========================
 # 📅 CALENDRIER
