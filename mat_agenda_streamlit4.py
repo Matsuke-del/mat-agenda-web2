@@ -404,13 +404,27 @@ def popup_activity(row):
     # =========================
     # 🖼️ IMAGES
     # =========================
-    if valid_images:
-        img_cols = st.columns(len(valid_images))
+    if "image_url" in row and row["image_url"]:
+        try:
+            images = json.loads(row["image_url"])
+        except:
+            images = [row["image_url"]]
+
+        if not isinstance(images, list):
+            images = [images]
+
+        valid_images = [
+            img for img in images
+            if isinstance(img, str) and img.startswith("http")
+        ]
+
+        if valid_images:
+            img_cols = st.columns(len(valid_images))
 
         for i, img in enumerate(valid_images):
             with img_cols[i]:
                 st.image(img, use_container_width=True)
- 
+
                 if st.button("🔍 Agrandir", key=f"zoom_cal_{row['id']}_{i}"):
                     st.session_state.zoom_image = img
 # =========================
@@ -544,15 +558,29 @@ if page == "📂 Liste":
                     st.rerun()
 
                 # --- Affichage images ---
-                if valid_images:
-                    img_cols = st.columns(len(valid_images))
+                if "image_url" in row and row["image_url"]:
+                    try:
+                        images = json.loads(row["image_url"])
+                    except:
+                        images = [row["image_url"]]
 
-                for i, img in enumerate(valid_images):
-                     with img_cols[i]:
-                         st.image(img, use_container_width=True)
+                    if not isinstance(images, list):
+                        images = [images]
 
-                         if st.button("🔍 Agrandir", key=f"zoom_list_{row['id']}_{i}"):
-                             st.session_state.zoom_image = img
+                    valid_images = [
+                        img for img in images
+                        if isinstance(img, str) and img.startswith("http")
+                    ]
+
+                    if valid_images:
+                        img_cols = st.columns(len(valid_images))
+
+                        for i, img in enumerate(valid_images):
+                            with img_cols[i]:
+                                st.image(img, use_container_width=True)
+
+                                if st.button("🔍 Agrandir", key=f"zoom_list_{row['id']}_{i}"):
+                                    st.session_state.zoom_image = img
 
             # --- Bouton modifier ---
             with col2:
