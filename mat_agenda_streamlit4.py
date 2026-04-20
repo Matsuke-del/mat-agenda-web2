@@ -395,10 +395,10 @@ def popup_activity(row):
             images = json.loads(row["image_url"])
         except:
             images = [row["image_url"]]
-  
+
         if not isinstance(images, list):
             images = [images]
- 
+
         valid_images = [
             img for img in images
             if isinstance(img, str) and img.startswith("http")
@@ -411,13 +411,8 @@ def popup_activity(row):
                 with img_cols[i]:
                     st.image(img, use_container_width=True)
 
-                    if st.button(f"🔍 Agrandir {i}", key=f"zoom_{i}"):
-                    
-                        @st.dialog("🖼️ Image agrandie")
-                        def show_image_popup(image_url):
-                            st.image(image_url, use_container_width=True)
-
-                        show_image_popup(img)
+                    with st.expander("🔍 Agrandir"):
+                        st.image(img, use_container_width=True)
 # =========================
 # 📅 CALENDRIER
 # =========================
