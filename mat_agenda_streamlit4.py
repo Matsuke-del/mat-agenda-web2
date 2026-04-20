@@ -33,6 +33,8 @@ h1,h2,h3{color:#00ffee;}
 </style>
 """, unsafe_allow_html=True)
 
+if "zoom_image" not in st.session_state:
+    st.session_state.zoom_image = None
 # =========================
 # LECTURE SUPABASE
 # =========================
@@ -270,6 +272,18 @@ if "edit_id" in st.session_state:
 # =========================
 # NAVIGATION
 # =========================
+if st.session_state.zoom_image:
+
+    @st.dialog("🖼️ Image agrandie")
+    def image_popup():
+        st.image(st.session_state.zoom_image, use_container_width=True)
+
+        if st.button("❌ Fermer"):
+            st.session_state.zoom_image = None
+            st.rerun()
+
+    image_popup()
+    
 page = st.sidebar.radio(
     "Navigation",
     ["📅 Calendrier", "📂 Liste", "📊 Statistiques"]
@@ -390,29 +404,15 @@ def popup_activity(row):
     # =========================
     # 🖼️ IMAGES
     # =========================
-    if "image_url" in row and row["image_url"]:
-        try:
-            images = json.loads(row["image_url"])
-        except:
-            images = [row["image_url"]]
+    if valid_images:
+        img_cols = st.columns(len(valid_images))
 
-        if not isinstance(images, list):
-            images = [images]
-
-        valid_images = [
-            img for img in images
-            if isinstance(img, str) and img.startswith("http")
-        ]
-
-        if valid_images:
-            img_cols = st.columns(len(valid_images))
-
-            for i, img in enumerate(valid_images):
-                with img_cols[i]:
-                    st.image(img, use_container_width=True)
-
-                    with st.expander("🔍 Agrandir"):
-                        st.image(img, use_container_width=True)
+        for i, img in enumerate(valid_images):
+            with img_cols[i]:
+                st.image(img, use_container_width=True)
+ 
+                if st.button("🔍 Agrandir", key=f"zoom_cal_{row['id']}_{i}"):
+                    st.session_state.zoom_image = img
 # =========================
 # 📅 CALENDRIER
 # =========================
@@ -544,24 +544,15 @@ if page == "📂 Liste":
                     st.rerun()
 
                 # --- Affichage images ---
-                if "image_url" in row and row["image_url"]:
-                    try:
-                        images = json.loads(row["image_url"])
-                    except:
-                        images = [row["image_url"]]
+                if valid_images:
+                    img_cols = st.columns(len(valid_images))
 
-                    if not isinstance(images, list):
-                        images = [images]
+                for i, img in enumerate(valid_images):
+                     with img_cols[i]:
+                         st.image(img, use_container_width=True)
 
-                    valid_images = [
-                        img for img in images
-                        if isinstance(img, str) and img.startswith("http")
-                    ]
-
-                    if valid_images:
-                        img_cols = st.columns(len(valid_images))
-                        for i, img in enumerate(valid_images):
-                            img_cols[i].image(img, use_container_width=True)
+                         if st.button("🔍 Agrandir", key=f"zoom_list_{row['id']}_{i}"):
+                             st.session_state.zoom_image = img
 
             # --- Bouton modifier ---
             with col2:
