@@ -390,35 +390,24 @@ def popup_activity(row):
     # =========================
     # 🖼️ IMAGES
     # =========================
-    st.subheader("🖼️ Images")
+    if "image_url" in row and row["image_url"]:
+                    try:
+                        images = json.loads(row["image_url"])
+                    except:
+                        images = [row["image_url"]]
 
-    raw_img = row.get("image_url", "[]")
+                    if not isinstance(images, list):
+                        images = [images]
 
-    try:
-        imgs = json.loads(raw_img) if raw_img else []
-    except:
-        imgs = [raw_img]
+                    valid_images = [
+                        img for img in images
+                        if isinstance(img, str) and img.startswith("http")
+                    ]
 
-    if imgs:
-        html = '<div style="display:flex;overflow-x:auto;gap:10px;padding:10px;">'
-
-        for url in imgs:
-            html += f"""
-            <a href="{url}" target="_blank">
-                <img src="{url}" style="
-                    height:200px;
-                    border-radius:10px;
-                    cursor:pointer;
-                ">
-            </a>
-            """
-
-        html += "</div>"
-
-        st.markdown(html, unsafe_allow_html=True)
-
-    else:
-        st.info("Aucune image")
+                    if valid_images:
+                        img_cols = st.columns(len(valid_images))
+                        for i, img in enumerate(valid_images):
+                            img_cols[i].image(img, use_container_width=True)
 
 # =========================
 # 📅 CALENDRIER
