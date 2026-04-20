@@ -407,7 +407,14 @@ def popup_activity(row):
                     if valid_images:
                         img_cols = st.columns(len(valid_images))
                         for i, img in enumerate(valid_images):
-                            img_cols[i].image(img, use_container_width=True)
+                            img_cols = st.columns(len(valid_images))
+
+                            for i, img in enumerate(valid_images):
+                                with img_cols[i]:
+                                    st.image(img, use_container_width=True)
+
+                                with st.expander("🔍 Agrandir"):
+                                    st.image(img, use_container_width=True)
 
 # =========================
 # 📅 CALENDRIER
