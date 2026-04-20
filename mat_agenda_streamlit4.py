@@ -33,7 +33,6 @@ h1,h2,h3{color:#00ffee;}
 </style>
 """, unsafe_allow_html=True)
 
-    raise StreamlitAPIException("Dialogs may not be nested inside other dialogs.")
 # =========================
 # LECTURE SUPABASE
 # =========================
