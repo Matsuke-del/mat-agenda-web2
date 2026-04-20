@@ -5,16 +5,16 @@ import requests
 from datetime import datetime
 from streamlit_calendar import calendar
 from supabase import create_client
+from PIL import Image
+import io
+import re
 
 # =========================
 # SUPABASE
-# ========================
+# =========================
 url = "https://quamffmaxqhhtyxworou.supabase.co"
 key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
 supabase = create_client(url, key)
-
-response = supabase.table("agenda").select("*").execute()
-print(response.data)
 
 # =========================
 # CONFIGURATION PAGE
@@ -34,8 +34,9 @@ h1,h2,h3{color:#00ffee;}
 """, unsafe_allow_html=True)
 
 # =========================
-# LECTURE SUPABASE
+# LECTURE SUPABASE (CACHÉE)
 # =========================
+@st.cache_data(ttl=10)
 def lire_data():
     response = supabase.table("agenda").select("*").execute()
     data = response.data
@@ -51,12 +52,24 @@ def format_date_fr(date_str):
         return date_str
 
 # =========================
+# MINIATURES IMAGES (OPTIONNEL)
+# =========================
+@st.cache_data
+def load_thumbnail(url, size=(300,300)):
+    try:
+        import requests as rq
+        img = Image.open(io.BytesIO(rq.get(url).content))
+        img.thumbnail(size)
+        return img
+    except:
+        return None
+
+# =========================
 # POPUP TACHES A PREVOIR
 # =========================
 @st.dialog("📝 Tâches à prévoir")
 def popup_tasks():
 
-    # lecture supabase
     response = supabase.table("agenda").select('id, "Tâches à prévoir"').limit(1).execute()
 
     tasks = []
@@ -64,9 +77,7 @@ def popup_tasks():
 
     if response.data:
         row_id = response.data[0]["id"]
-
         raw = response.data[0].get("Tâches à prévoir")
-
         if raw:
             try:
                 tasks = json.loads(raw)
@@ -79,46 +90,35 @@ def popup_tasks():
 
     if tasks:
         for i, task in enumerate(tasks):
-
             col1, col2 = st.columns([6,1])
-
             with col1:
                 st.write(f"• {task}")
-
             with col2:
                 delete = st.button("❌", key=f"del_task_{i}")
-
             if not delete:
                 new_tasks.append(task)
     else:
         st.info("Aucune tâche")
 
-    # ajout
     st.subheader("➕ Ajouter une tâche")
-
     new_task = st.text_input("Nouvelle tâche")
 
     if st.button("Ajouter tâche"):
         if new_task.strip() and row_id:
-
             new_tasks.append(new_task)
-
             supabase.table("agenda").update({
                 "Tâches à prévoir": json.dumps(new_tasks)
             }).eq("id", row_id).execute()
-
             st.rerun()
 
-    # sauvegarde suppression
     if tasks != new_tasks and row_id:
-
         supabase.table("agenda").update({
             "Tâches à prévoir": json.dumps(new_tasks)
         }).eq("id", row_id).execute()
 
     if st.button("Fermer"):
         st.rerun()
-        
+
 # =========================
 # NOTIFICATION
 # =========================
@@ -134,7 +134,8 @@ def send_push(desc, date, debut, fin, tech):
             "url": "https://mat-agenda-web2-mngwrfjcalzf3kbpdvd99n.streamlit.app",
             "url_title": "📂 Ouvrir MAT Agenda"
         }
-    )  
+    )
+
 # =========================
 # MODIFICATION ACTIVITE
 # =========================
@@ -142,9 +143,6 @@ if "edit_id" in st.session_state:
 
     st.subheader("✏ Modifier activité")
 
-    # ------------------------
-    # CHAMPS PRINCIPAUX
-    # ------------------------
     new_date = st.date_input(
         "📅 Date",
         value=pd.to_datetime(st.session_state["edit_date"]),
@@ -159,9 +157,6 @@ if "edit_id" in st.session_state:
         value=st.session_state["edit_desc"]
     )
 
-    # ------------------------
-    # TECHNICIEN
-    # ------------------------
     techniciens = ["MAT", "Sébastien"]
 
     tech_selected = st.selectbox(
@@ -172,19 +167,12 @@ if "edit_id" in st.session_state:
         )
     )
 
-    # ------------------------
-    # COULEUR
-    # ------------------------
     color = st.color_picker(
         "Couleur",
         st.session_state.get("edit_color", "#00ff9c")
     )
 
-    # ------------------------
-    # IMAGES EXISTANTES
-    # ------------------------
     images = []
-
     if "edit_images" in st.session_state and st.session_state["edit_images"]:
         try:
             images = json.loads(st.session_state["edit_images"])
@@ -196,52 +184,35 @@ if "edit_id" in st.session_state:
     new_images_list = []
 
     for i, img in enumerate(images):
-
         col1, col2 = st.columns([5, 1])
-
         with col1:
             st.image(img, width=250)
-
         with col2:
             delete = st.checkbox("❌", key=f"delimg{i}")
-
         if not delete:
             new_images_list.append(img)
 
-    # ------------------------
-    # AJOUT NOUVELLES IMAGES
-    # ------------------------
     new_uploads = st.file_uploader(
         "Ajouter nouvelles images",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True
     )
 
-    # ------------------------
-    # SAVE
-    # ------------------------
     if st.button("Enregistrer modification"):
 
-        # Upload nouvelles images
         if new_uploads:
             for img in new_uploads:
-
                 file_name = f"{int(datetime.now().timestamp()*1000)}_{img.name}"
-
                 try:
                     supabase.storage.from_("agenda-images").upload(
                         file_name,
                         img.getvalue()
                     )
-
                     url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-
                     new_images_list.append(url)
-
                 except Exception as e:
                     st.error(f"Erreur upload {img.name}: {e}")
 
-        # UPDATE SUPABASE
         supabase.table("agenda").update({
             "date": new_date.isoformat(),
             "debut": new_debut,
@@ -252,7 +223,6 @@ if "edit_id" in st.session_state:
             "image_url": json.dumps(new_images_list)
         }).eq("id", st.session_state["edit_id"]).execute()
 
-        # CLEAN SESSION
         for key in [
             "edit_id",
             "edit_desc",
@@ -267,6 +237,7 @@ if "edit_id" in st.session_state:
 
         st.success("✅ Activité modifiée")
         st.rerun()
+
 # =========================
 # NAVIGATION
 # =========================
@@ -283,10 +254,8 @@ if st.button("📝 Tâches à prévoir"):
 # =========================
 st.sidebar.header("➕ Ajouter activité")
 
-# Liste des techniciens
 techniciens = ["MAT", "Sébastien"]
 
-# Choix du technicien pour l'activité
 tech_selected = st.sidebar.selectbox("🛠 Technicien", techniciens)
 
 date = st.sidebar.date_input(
@@ -307,17 +276,6 @@ images = st.sidebar.file_uploader(
     key="sidebar_images_upload"
 )
 
-image_urls = []
-if images:
-    for image in images:
-        try:
-            file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
-            supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
-            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-            image_urls.append(url)
-        except Exception as e:
-            st.error(f"Erreur upload {image.name}: {e}")
-
 if st.sidebar.button("Ajouter activité"):
 
     image_urls = []
@@ -325,15 +283,15 @@ if st.sidebar.button("Ajouter activité"):
     if images:
         for image in images:
             file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
-
-            supabase.storage.from_("agenda-images").upload(
-                file_name,
-                image.getvalue()
-            )
-
-            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-
-            image_urls.append(url)
+            try:
+                supabase.storage.from_("agenda-images").upload(
+                    file_name,
+                    image.getvalue()
+                )
+                url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+                image_urls.append(url)
+            except Exception as e:
+                st.error(f"Erreur upload {image.name}: {e}")
 
     supabase.table("agenda").insert({
         "date": date.isoformat(),
@@ -353,6 +311,8 @@ if st.sidebar.button("Ajouter activité"):
         tech_selected
     )
 
+    st.rerun()
+
 # =========================
 # TRI
 # =========================
@@ -370,44 +330,81 @@ def calc_heures(row):
     except:
         return 0
 
-# Calculer sur df
 if not df.empty:
     df["heures"] = df.apply(calc_heures, axis=1)
 
 # =========================
-# CALENDRIER
+# 📋 POPUP ACTIVITÉ (UNIQUE)
 # =========================
+@st.dialog("📋 Activité")
+def popup_activity(row):
+
+    st.subheader("📄 Description")
+    st.code(row["description"])
+
+    st.write(f"📅 {format_date_fr(row['date'])}")
+    st.write(f"⏰ {row['debut']} → {row['fin']}")
+    st.write(f"👷 {row.get('technicien','Non défini')}")
+
+    st.subheader("🖼️ Images")
+
+    raw_img = row.get("image_url", "[]")
+
+    try:
+        imgs = json.loads(raw_img) if raw_img else []
+    except:
+        imgs = [raw_img]
+
+    if imgs:
+        html = '<div style="display:flex;overflow-x:auto;gap:10px;padding:10px;">'
+        for url in imgs:
+            html += f"""
+            <a href="{url}" target="_blank">
+                <img src="{url}" style="
+                    height:200px;
+                    border-radius:10px;
+                    cursor:pointer;
+                ">
+            </a>
+            """
+        html += "</div>"
+        st.markdown(html, unsafe_allow_html=True)
+    else:
+        st.info("Aucune image")
+
+# =========================
+# 📅 CALENDRIER
+# =========================
+@st.cache_data
+def build_events(df):
+    events = []
+    for _, row in df.iterrows():
+        raw_title = str(row.get("description", "")).split("\n")[0]
+        title = (raw_title[:37] + "...") if len(raw_title) > 40 else raw_title
+        events.append({
+            "id": str(row["id"]),
+            "title": title,
+            "start": f"{row['date']}T{row['debut']}",
+            "end": f"{row['date']}T{row['fin']}",
+            "color": row.get("color", "#00ff9c")
+        })
+    return events
+
 if page == "📅 Calendrier":
 
     st.header("📅 Calendrier")
 
     if df.empty:
         st.info("Aucune activité")
-
     else:
+        events = build_events(df)
 
-        # 1) Events
-        events = []
-
-        for _, row in df.iterrows():
-
-            raw_title = row["description"].split("\n")[0]
-            title = (raw_title[:37] + "...") if len(raw_title) > 40 else raw_title
-
-            events.append({
-                "id": row["id"],
-                "title": title,
-                "start": row["date"] + "T" + row["debut"],
-                "end": row["date"] + "T" + row["fin"],
-                "color": row["color"]
-            })
-
-        # 2) Calendar
         state = calendar(
             events=events,
             options={
                 "locale": "fr",
                 "firstDay": 1,
+                "timeZone": "local",
                 "headerToolbar": {
                     "left": "prev,next today",
                     "center": "title",
@@ -423,126 +420,117 @@ if page == "📅 Calendrier":
             callbacks=["eventClick"]
         )
 
-        # 3) Popup activité
-        @st.dialog("📋 Activité")
-        def popup_activity(row):
-
-            st.subheader("📄 Description")
-
-            st.code(row["description"])
-
-            st.write(f"📅 {format_date_fr(row['date'])}")
-            st.write(f"⏰ {row['debut']} → {row['fin']}")
-
-        # 4) CLICK EVENT 👉 DOIT ÊTRE ICI
         if state and state.get("eventClick"):
-
             event_id = state["eventClick"]["event"]["id"]
-
             filtered = df[df["id"].astype(str) == str(event_id)]
-
             if not filtered.empty:
-                row = filtered.iloc[0]
-                popup_activity(row)
+                popup_activity(filtered.iloc[0])
 
 # =========================
 # LISTE
 # =========================
 if page == "📂 Liste":
+
     st.header("📂 Activités")
 
-    # --- Barre de recherche ---
-    col1, col2 = st.columns([4, 1])
+    col_search1, col_search2, col_search3 = st.columns([3, 3, 1])
 
-    with col1:
-        search_text = st.text_input("🔎 Recherche mot clé", key="search_text")
+    with col_search1:
+        search_text = st.text_input("🔎 Recherche mot clé")
 
-    with col2:
-        btn_search = st.button("Rechercher", use_container_width=True)
+    with col_search2:
+        search_date = st.date_input(
+            "📅 Recherche par date",
+            format="DD/MM/YYYY",
+            key="search_date"
+        )
 
-    btn_reset = st.button("Reset 🔄", use_container_width=True)
+    with col_search3:
+        reset = st.button("❌")
 
-    # --- RESET ---
-    if btn_reset:
-        st.session_state["search_text"] = ""
-        st.rerun()
+    if reset:
+        search_text = ""
+        search_date = None
 
-    # --- Filtrage ---
     filtered_df = df.copy()
 
-    if btn_search and search_text.strip():
+    if search_text:
         mots = search_text.split()
-        for mot in mots:
-            filtered_df = filtered_df[
-                filtered_df["description"].astype(str).str.contains(mot, case=False, na=False)
-            ]
+        pattern = re.compile("|".join(mots), re.IGNORECASE)
+        filtered_df = filtered_df[
+            filtered_df["description"].astype(str).str.contains(pattern, na=False)
+        ]
 
-    # --- Résultats ---
+    if search_date:
+        filtered_df = filtered_df[
+            filtered_df["date"] == search_date.strftime("%Y-%m-%d")
+        ]
+
     if filtered_df.empty:
         st.info("Aucune activité trouvée")
     else:
         for _, row in filtered_df.iterrows():
-            st.subheader("📄 Description")
-            st.code(row["description"])
 
-            st.write(f"📅 {format_date_fr(row['date'])}")
-            st.write(f"⏰ {row['debut']} → {row['fin']}")
-            st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
+            col1, col2, col3 = st.columns([6, 1, 1])
 
-            # Bouton fermer
-            if st.button("Fermer", key=f"close{row['id']}"):
-                st.rerun()
+            with col1:
+                st.subheader("📄 Description")
+                st.code(row["description"])
+                st.write(f"📅 {format_date_fr(row['date'])}")
+                st.write(f"⏰ {row['debut']} → {row['fin']}")
+                st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
 
-            # Images
-            if "image_url" in row and row["image_url"]:
-                try:
-                    images = json.loads(row["image_url"])
-                except:
-                    images = [row["image_url"]]
+                if "image_url" in row and row["image_url"]:
+                    try:
+                        images = json.loads(row["image_url"])
+                    except:
+                        images = [row["image_url"]]
 
-                if not isinstance(images, list):
-                    images = [images]
+                    if not isinstance(images, list):
+                        images = [images]
 
-                valid_images = [img for img in images if isinstance(img, str) and img.startswith("http")]
+                    valid_images = [
+                        img for img in images
+                        if isinstance(img, str) and img.startswith("http")
+                    ]
 
-                if valid_images:
-                    img_cols = st.columns(len(valid_images))
-                    for i, img in enumerate(valid_images):
-                        img_cols[i].image(img, use_container_width=True)
+                    if valid_images:
+                        img_cols = st.columns(len(valid_images))
+                        for i, img in enumerate(valid_images):
+                            thumb = load_thumbnail(img)
+                            if thumb:
+                                img_cols[i].image(thumb, use_container_width=True)
 
-            # Bouton éditer
-            if st.button("✏", key=f"edit{row['id']}"):
-                st.session_state["edit_id"] = row["id"]
-                st.session_state["edit_desc"] = row["description"]
-                st.session_state["edit_date"] = row["date"]
-                st.session_state["edit_debut"] = row["debut"]
-                st.session_state["edit_fin"] = row["fin"]
-                st.session_state["edit_images"] = row.get("image_url", "[]")
-                st.session_state["edit_technicien"] = row.get("technicien", "MAT")
-                st.session_state["edit_color"] = row.get("color", "#00ff9c")
-                st.stop()
+                if st.button("Fermer", key=f"close{row['id']}"):
+                    st.rerun()
 
-            # Bouton supprimer
-            if st.button("❌", key=f"del{row['id']}"):
-                supabase.table("agenda").delete().eq("id", row["id"]).execute()
-                st.rerun()
+            with col2:
+                if st.button("✏", key=f"edit{row['id']}"):
+                    st.session_state["edit_id"] = row["id"]
+                    st.session_state["edit_desc"] = row["description"]
+                    st.session_state["edit_date"] = row["date"]
+                    st.session_state["edit_debut"] = row["debut"]
+                    st.session_state["edit_fin"] = row["fin"]
+                    st.session_state["edit_images"] = row.get("image_url", "[]")
+                    st.session_state["edit_technicien"] = row.get("technicien", "MAT")
+                    st.session_state["edit_color"] = row.get("color", "#00ff9c")
+                    st.stop()
+
+            with col3:
+                if st.button("❌", key=f"del{row['id']}"):
+                    supabase.table("agenda").delete().eq("id", row["id"]).execute()
+                    st.stop()
 
 # =========================
-# Statistique
+# STATISTIQUES
 # =========================
-
 if page == "📊 Statistiques":
 
     st.header("📊 Statistiques")
 
     if df.empty:
         st.info("Pas de données")
-
     else:
-
-        # =========================
-        # CHOIX TECHNICIEN
-        # =========================
         techniciens = ["Tous"] + sorted(df["technicien"].dropna().unique())
 
         tech_selected = st.selectbox(
@@ -550,17 +538,11 @@ if page == "📊 Statistiques":
             techniciens
         )
 
-        # =========================
-        # FILTRE DATA
-        # =========================
         df_filtered = df.copy()
 
         if tech_selected != "Tous":
             df_filtered = df[df["technicien"] == tech_selected]
 
-        # =========================
-        # METRICS
-        # =========================
         col1, col2 = st.columns(2)
 
         with col1:
@@ -569,13 +551,9 @@ if page == "📊 Statistiques":
         with col2:
             st.metric("📅 Activités", len(df_filtered))
 
-        # =========================
-        # HEURES PAR MOIS
-        # =========================
         df_filtered["mois"] = pd.to_datetime(df_filtered["date"]).dt.strftime("%Y-%m")
 
         stats = df_filtered.groupby("mois")["heures"].sum()
 
         st.subheader("Heures par mois")
-
         st.bar_chart(stats)
