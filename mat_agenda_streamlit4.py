@@ -494,45 +494,39 @@ if page == "📂 Liste":
 
     st.header("📂 Activités")
 
-    # --- Recherche ---
-    col_search1, col_search2, col_search3 = st.columns([3, 3, 1])
+    # --- Barre de recherche ---
+    col_search1, col_search2, col_search3 = st.columns([4, 1.2, 1.2])
 
     with col_search1:
-        search_text = st.text_input("🔎 Recherche mot clé")
+        search_text = st.text_input("🔎 Recherche mot clé", value=st.session_state.get("search_text", ""))
 
     with col_search2:
-        search_date = st.date_input(
-            "📅 Recherche par date",
-            format="DD/MM/YYYY",
-            key="search_date"
-         )
-
+        lancer = st.button("Chercher")
 
     with col_search3:
-        reset = st.button("❌")
+        reset = st.button("Reset")
 
-    # Reset recherche
+    # --- Gestion des boutons ---
     if reset:
+        st.session_state.search_text = ""
         search_text = ""
-        search_date = None
+        lancer = True  # recharge la liste complète
 
+    if lancer:
+        st.session_state.search_text = search_text
+
+    # --- Filtrage ---
+    filtre = st.session_state.get("search_text", "")
     filtered_df = df.copy()
 
-    # --- Filtre mot clé ---
-    if search_text:
-        mots = search_text.split()
+    if filtre:
+        mots = filtre.split()
         for mot in mots:
             filtered_df = filtered_df[
                 filtered_df["description"]
                 .astype(str)
                 .str.contains(mot, case=False, na=False)
             ]
-
-    # --- Filtre date ---
-    if search_date:
-        filtered_df = filtered_df[
-            filtered_df["date"] == search_date.strftime("%Y-%m-%d")
-        ]
 
     # --- Résultats ---
     if filtered_df.empty:
@@ -544,38 +538,37 @@ if page == "📂 Liste":
             col1, col2, col3 = st.columns([6, 1, 1])
 
             # --- Colonne principale ---
-        with col1:
-            st.subheader("📄 Description")
+            with col1:
+                st.subheader("📄 Description")
+                st.code(row["description"])
 
-        st.code(row["description"])
+                st.write(f"📅 {format_date_fr(row['date'])}")
+                st.write(f"⏰ {row['debut']} → {row['fin']}")
+                st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
 
-        st.write(f"📅 {format_date_fr(row['date'])}")
-        st.write(f"⏰ {row['debut']} → {row['fin']}")
-        st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
+                # Bouton fermer
+                if st.button("Fermer", key=f"close{row['id']}"):
+                    st.rerun()
 
-        # Bouton fermer
-        if st.button("Fermer", key=f"close{row['id']}"):
-            st.rerun()
+                # --- Affichage images ---
+                if "image_url" in row and row["image_url"]:
+                    try:
+                        images = json.loads(row["image_url"])
+                    except:
+                        images = [row["image_url"]]
 
-        # --- Affichage images ---
-        if "image_url" in row and row["image_url"]:
-            try:
-                images = json.loads(row["image_url"])
-            except:
-                images = [row["image_url"]]
+                    if not isinstance(images, list):
+                        images = [images]
 
-            if not isinstance(images, list):
-                images = [images]
+                    valid_images = [
+                        img for img in images
+                        if isinstance(img, str) and img.startswith("http")
+                    ]
 
-            valid_images = [
-                img for img in images
-                if isinstance(img, str) and img.startswith("http")
-            ]
-
-            if valid_images:
-                img_cols = st.columns(len(valid_images))
-                for i, img in enumerate(valid_images):
-                    img_cols[i].image(img, use_container_width=True)
+                    if valid_images:
+                        img_cols = st.columns(len(valid_images))
+                        for i, img in enumerate(valid_images):
+                            img_cols[i].image(img, use_container_width=True)
 
             # --- Bouton modifier ---
             with col2:
@@ -587,7 +580,6 @@ if page == "📂 Liste":
                     st.session_state["edit_debut"] = row["debut"]
                     st.session_state["edit_fin"] = row["fin"]
                     st.session_state["edit_images"] = row.get("image_url", "[]")
-                     # 👉 AJOUT ICI
                     st.session_state["edit_technicien"] = row.get("technicien", "MAT")
                     st.session_state["edit_color"] = row.get("color", "#00ff9c")
 
@@ -598,7 +590,6 @@ if page == "📂 Liste":
                 if st.button("❌", key=f"del{row['id']}"):
                     supabase.table("agenda").delete().eq("id", row["id"]).execute()
                     st.stop()
-
 
 
 if page == "📊 Statistiques":
