@@ -33,6 +33,11 @@ h1,h2,h3{color:#00ffee;}
 </style>
 """, unsafe_allow_html=True)
 
+if "zoom_image" not in st.session_state:
+    st.session_state.zoom_image = None
+
+if "show_zoom" not in st.session_state:
+    st.session_state.show_zoom = False
 # =========================
 # LECTURE SUPABASE
 # =========================
@@ -383,7 +388,7 @@ if not df.empty:
 # =========================
 @st.dialog("🖼️ Image en grand")
 def popup_zoom_image():
-    img = st.session_state.get("zoom_image", None)
+    img = st.session_state.get("zoom_image")
 
     if img:
         st.image(img, use_container_width=True)
@@ -661,5 +666,5 @@ if page == "📊 Statistiques":
 
         st.bar_chart(stats)
         
-if st.session_state.get("show_zoom", False):
+if st.session_state.get("show_zoom"):
     popup_zoom_image()
