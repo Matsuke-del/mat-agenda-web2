@@ -270,16 +270,30 @@ if "edit_id" in st.session_state:
 # =========================
 # NAVIGATION
 # =========================
-if st.session_state.zoom_image:
+# =========================
+# INIT
+# =========================
+if "zoom_image" not in st.session_state:
+    st.session_state.zoom_image = None
 
-    @st.dialog("🖼️ Image agrandie")
-    def image_popup():
+
+# =========================
+# POPUP IMAGE
+# =========================
+@st.dialog("🖼️ Image agrandie")
+def image_popup():
+    if st.session_state.zoom_image:
         st.image(st.session_state.zoom_image, use_container_width=True)
 
         if st.button("❌ Fermer"):
             st.session_state.zoom_image = None
             st.rerun()
 
+
+# =========================
+# OUVERTURE CONDITIONNELLE
+# =========================
+if st.session_state.zoom_image:
     image_popup()
     
 page = st.sidebar.radio(
