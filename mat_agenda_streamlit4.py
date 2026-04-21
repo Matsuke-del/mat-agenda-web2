@@ -617,9 +617,6 @@ if page == "📂 Liste":
                             with img_cols[i]:
                                 st.image(img, use_container_width=True)
 
-                                if st.button("🔍 Agrandir", key=f"zoom_list_{row['id']}_{i}"):
-                                    st.session_state.zoom_image = img
-
             # --- Bouton modifier ---
             with col2:
                 if st.button("✏", key=f"edit{row['id']}"):
