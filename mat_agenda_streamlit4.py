@@ -384,6 +384,31 @@ if not df.empty:
 # 📋 POPUP ACTIVITÉ (UNIQUE)
 # =========================
 # =========================
+# INIT
+# =========================
+if "zoom_image" not in st.session_state:
+    st.session_state.zoom_image = None
+
+
+# =========================
+# POPUP IMAGE
+# =========================
+@st.dialog("🖼️ Image agrandie")
+def image_popup():
+    if st.session_state.zoom_image:
+        st.image(st.session_state.zoom_image, use_container_width=True)
+
+        if st.button("❌ Fermer"):
+            st.session_state.zoom_image = None
+            st.rerun()
+
+
+# =========================
+# OUVERTURE CONDITIONNELLE
+# =========================
+if st.session_state.zoom_image:
+    image_popup()
+# =========================
 # 🖼️ POPUP ZOOM IMAGE
 # =========================
 @st.dialog("🖼️ Image en grand")
