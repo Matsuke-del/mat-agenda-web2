@@ -796,54 +796,67 @@ if page == "🏭 Plan Usine":
         width=image.width  # IMPORTANT : taille réelle pour clics corrects
     )
 
-    # =========================
-    # DÉTECTION DU CLIC
-    # =========================
-    if click:
-        x, y = click["x"], click["y"]
-        st.write(f"📍 Position cliquée : {x}, {y}")
+# =========================
+# DÉTECTION DU CLIC
+# =========================
+if click:
+    x, y = click["x"], click["y"]
+    st.write(f"📍 Position cliquée : {x}, {y}")
 
-        found = False
+    found = False
 
-        for machine, (x1, y1, x2, y2) in zones.items():
-            if x1 <= x <= x2 and y1 <= y <= y2:
+    for machine, (x1, y1, x2, y2) in zones.items():
+        if x1 <= x <= x2 and y1 <= y <= y2:
 
-                found = True
-                st.success(f"🟩 Machine sélectionnée : {machine}")
+            found = True
+            st.success(f"🟩 Machine sélectionnée : {machine}")
 
-                # =========================
-                # PANNEAU LATÉRAL ACTIVITÉS
-                # =========================
-                st.sidebar.title(f"📋 Activités pour {machine}")
+            # =========================
+            # PANNEAU LATÉRAL ACTIVITÉS
+            # =========================
+            st.sidebar.title(f"📋 Activités pour {machine}")
 
-                # Connexion Supabase
-                supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
-                supabase_key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
-                supabase = create_client(url, key)
+            # Connexion Supabase
+            from supabase import create_client
+            url = st.secrets["supabase_url"]
+            key = st.secrets["supabase_key"]
+            supabase = create_client(url, key)
 
-                # Récupérer les activités contenant le numéro de machine
-                query = (
-                    supabase
-                    .table("activites")
-                    .select("*")
-                    .ilike("description", f"%{machine}%")
-                )
+            # Récupérer les activités contenant le numéro de machine
+            query = (
+                supabase
+                .table("agenda")
+                .select("*")
+                .ilike("description", f"%{machine}%")
+            )
 
-                data = query.execute().data
+            data = query.execute().data
 
-                if not data:
-                    st.sidebar.warning("Aucune activité trouvée.")
-                else:
-                    for row in data:
-                        st.sidebar.markdown(f"""
-                        ### 📝 {row['description']}
-                        📅 {row['date']}
-                        ⏰ {row['debut']} → {row['fin']}
-                        👷 {row.get('technicien', 'Non défini')}
-                        ---
-                        """)
+            if not data:
+                st.sidebar.warning("Aucune activité trouvée.")
+            else:
+                for row in data:
+                    st.sidebar.markdown(f"""
+                    ### 📝 {row['description']}
+                    📅 {row['date']}
+                    👷 {row.get('technicien', 'Non défini')}
+                    """)
 
-                break
+                    # Affichage des images si présentes
+                    if row.get("image_url"):
+                        try:
+                            import json
+                            images = json.loads(row["image_url"])
+                        except:
+                            images = [row["image_url"]]
 
-        if not found:
-            st.warning("Aucune machine ici")
+                        for img in images:
+                            if img and str(img).startswith("http"):
+                                st.sidebar.image(img, use_container_width=True)
+
+                    st.sidebar.markdown("---")
+
+            break
+
+    if not found:
+        st.warning("Aucune machine ici")
