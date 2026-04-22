@@ -734,107 +734,7 @@ if page == "🏭 Plan Usine":
     st.write("Clique sur une machine pour afficher les activités.")
 
     # =========================
-    # CONNEXION SUPABASE (UTILISE LES SECRETS)
-    # =========================
-    try:
-        url = st.secrets["supabase_url"]
-        key = st.secrets["supabase_key"]
-    except KeyError:
-        st.error("❌ Les clés Supabase ne sont pas configurées dans Streamlit Cloud.")
-        st.info("""
-        Va dans Settings → Secrets et ajoute :
-
-        supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
-        supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YW1mZm1heHFoaHR5eHdvcm91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNzM4MjUsImV4cCI6MjA5MDk0OTgyNX0.aO5mv0jaOzFrj_yd8JtXDBrff0mwzsdPZpei_i3C_BM"
-        st.stop()
-
-    supabase = create_client(url, key)
-
-    # =========================
-    # CHARGER IMAGE
-    # =========================
-    image = Image.open("Plan_usine.png")
-
-    # =========================
-    # ZONES CLIQUABLES
-    # =========================
-    zones = {
-        "01": (1011,180,1098,244),
-        "02": (945,180,1009,242),
-        "03": (935,242,1009,293),
-        "04": (1234,129,1310,208),
-        "05": (1234,205,1310,272),
-        "06": (585,215,682,254),
-        "07": (422,699,533,786),
-        "08": (1234,440,1404,571),
-        "09": (1234,571,1404,692),
-        "10": (584,414,711,488),
-        "12": (263,150,334,224),
-        "14": (263,224,421,312),
-        "15": (533,179,585,879),
-        "26": (1234,313,1404,440),
-        "27": (1234,692,1404,783),
-        "28": (289,795,467,879),
-        "29": (584,612,663,680),
-        "30": (584,180,679,215),
-        "31": (584,680,663,769),
-        "32": (832,180,947,242),
-        "33": (791,83,1029,179),
-        "36": (382,80,443,224),
-        "37": (681,256,788,333),
-        "38": (1019,795,1179,872),
-        "39": (1024,438,1086,608),
-        "40": (873,795,1019,872),
-        "42": (1086,612,1175,696),
-        "44": (740,292,1030,329),
-        "45": (663,811,797,876),
-        "46": (903,438,1024,608),
-        "47": (832,242,889,291),
-        "49": (889,242,935,291),
-        "53": (584,488,771,610),
-        "101": (373,314,530,693),
-        "102": (1104,126,1404,272),
-        "103": (584,311,682,413),
-        "104": (584,83,788,180),
-        "105": (726,435,881,553),
-        "106": (681,333,793,488),
-        "107": (663,612,796,679),
-        "108": (1048,337,1116,391),
-        "109": (1005,337,1051,391),
-        "110": (193,314,375,791),
-        "111": (1086,443,1175,612),
-        "117": (663,680,791,766),
-    }
-
-    # =========================
-    # IMAGE CLIQUABLE
-    # =========================
-    click = streamlit_image_coordinates(
-        image,
-        key="plan",
-        width=image.width
-    )
-
-    # =========================
-    # RECHERCHE
-    # =========================
-    search = st.sidebar.text_input("🔍 Recherche activité")
-
-import streamlit as st
-from PIL import Image
-from streamlit_image_coordinates import streamlit_image_coordinates
-from supabase import create_client
-
-# =========================
-# PAGE PLAN USINE
-# =========================
-if page == "🏭 Plan Usine":
-
-    st.header("🏭 Plan Usine")
-    st.write("Clique sur une machine pour afficher les activités.")
-
-    # =========================
-    # CONNEXION SUPABASE (UTILISE LES SECRETS)
+    # CONNEXION SUPABASE
     # =========================
     try:
         url = st.secrets["supabase_url"]
@@ -953,21 +853,21 @@ if page == "🏭 Plan Usine":
                 else:
                     for row in data:
                         st.sidebar.markdown(f"""
-                        ### 📝 {row.get('description', '-')}
+### 📝 {row.get('description', '-')}
 
-                            📅 {row.get('date', '-')}
+📅 {row.get('date', '-')}
 
-                            ⏰ {row.get('debut', '-')} → {row.get('fin', '-')}
+⏰ {row.get('debut', '-')} → {row.get('fin', '-')}
 
-                            👷 {row.get('technicien', 'Non défini')}
-                            """)
+👷 {row.get('technicien', 'Non défini')}
+""")
 
-                                if row.get("image_url"):
-                                    st.sidebar.image(row["image_url"], use_container_width=True)
+                        if row.get("image_url"):
+                            st.sidebar.image(row["image_url"], use_container_width=True)
 
-                                st.sidebar.markdown("---")
+                        st.sidebar.markdown("---")
 
-                        break
+                break
 
-                if not found:
-                    st.warning("Aucune machine ici")
+        if not found:
+            st.warning("Aucune machine ici")
