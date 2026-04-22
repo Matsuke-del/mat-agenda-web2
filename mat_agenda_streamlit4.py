@@ -828,15 +828,22 @@ if page == "🏭 Plan Usine":
 
                 # Requête corrigée
                 try:
+                    machine_clean = str(int(machine))  # 🔥 conversion
+
                     data = (
                         supabase
                         .table("agenda")
                         .select("*")
-                        .ilike("machine", f"%{machine}%")   # 🔥 FIX MAGIQUE
+                        .eq("machine", machine_clean)
                         .execute()
                         .data
                     )
-                    
+                    st.write("DEBUG :", data)
+
+                except Exception as e:
+                    st.sidebar.error("❌ Erreur Supabase.")
+                    st.sidebar.write(e)
+                    break
                 # Affichage
                 if not data:
                     st.sidebar.warning("Aucune activité trouvée.")
