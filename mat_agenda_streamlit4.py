@@ -733,7 +733,21 @@ if page == "🏭 Plan Usine":
     st.header("🏭 Plan Usine")
     st.write("Clique sur une machine pour afficher les activités.")
 
-    # Charger l'image
+    # =========================
+    # CONNEXION SUPABASE
+    # =========================
+    if "supabase_url" not in st.secrets or "supabase_key" not in st.secrets:
+        st.error("❌ Clés Supabase manquantes.")
+        st.stop()
+
+    supabase = create_client(
+        st.secrets["supabase_url"],
+        st.secrets["supabase_key"]
+    )
+
+    # =========================
+    # CHARGER IMAGE
+    # =========================
     image = Image.open("Plan_usine.png")
 
     # =========================
@@ -774,7 +788,7 @@ if page == "🏭 Plan Usine":
         "49": (889,242,935,291),
         "53": (584,488,771,610),
         "101": (373,314,530,693),
-        "102": (1310,126,1404,272),
+        "102": (1104,126,1404,272),  # 🔥 corrigé
         "103": (584,311,682,413),
         "104": (584,83,788,180),
         "105": (726,435,881,553),
@@ -797,7 +811,12 @@ if page == "🏭 Plan Usine":
     )
 
     # =========================
-    # DÉTECTION DU CLIC
+    # RECHERCHE (comme liste)
+    # =========================
+    search = st.sidebar.text_input("🔍 Recherche activité")
+
+    # =========================
+    # DETECTION CLIC
     # =========================
     if click:
         x, y = click["x"], click["y"]
@@ -811,56 +830,52 @@ if page == "🏭 Plan Usine":
                 found = True
                 st.success(f"🟩 Machine sélectionnée : {machine}")
 
-                # =========================
-                # PANNEAU LATÉRAL ACTIVITÉS
-                # =========================
-                st.sidebar.title(f"📋 Activités pour {machine}")
+                st.sidebar.title(f"📋 Activités (zone {machine})")
 
-                # Vérification des secrets
-                if "supabase_url" not in st.secrets or "supabase_key" not in st.secrets:
-                    st.sidebar.error("❌ Clés Supabase manquantes dans Streamlit Cloud.")
-                    break
+                # 🔥 conversion pour éviter "01" vs "1"
+                machine_search = str(int(machine))
 
-                # Connexion Supabase
-                url = st.secrets["supabase_url"]
-                key = st.secrets["supabase_key"]
-                supabase = create_client(url, key)
-
-                # Requête corrigée
                 try:
-                    machine_clean = str(int(machine))  # 🔥 conversion
+                    query = supabase.table("agenda").select("*")
 
-                    data = (
-                        supabase
-                        .table("agenda")
-                        .select("*")
-                        .eq("machine", machine_clean)
-                        .execute()
-                        .data
-                    )
-                    st.write("DEBUG :", data)
+                    # 🔥 filtre par machine (mot clé dans description)
+                    query = query.ilike("description", f"%{machine_search}%")
+
+                    # 🔍 filtre recherche utilisateur
+                    if search:
+                        query = query.ilike("description", f"%{search}%")
+
+                    data = query.execute().data
 
                 except Exception as e:
-                    st.sidebar.error("❌ Erreur Supabase.")
+                    st.sidebar.error("❌ Erreur Supabase")
                     st.sidebar.write(e)
                     break
-                # Affichage
+
+                # =========================
+                # AFFICHAGE
+                # =========================
                 if not data:
                     st.sidebar.warning("Aucune activité trouvée.")
                 else:
                     for row in data:
-                        st.sidebar.markdown(f"""
-                        ### 📝 {row['description']}
-                        📅 {row['date']}
-                        ⏰ {row['debut']} → {row['fin']}
-                        👷 {row.get('technicien', 'Non défini')}
-                        """)
+                        with st.sidebar.container():
 
-                        # Affichage image(s)
-                        if row.get("image_url"):
-                            st.sidebar.image(row["image_url"], use_container_width=True)
+                            st.markdown(f"""
+### 📝 {row.get('description', '-')}
 
-                        st.sidebar.markdown("---")
+📅 {row.get('date', '-')}
+
+⏰ {row.get('debut', '-')} → {row.get('fin', '-')}
+
+👷 {row.get('technicien', 'Non défini')}
+""")
+
+                            # IMAGE
+                            if row.get("image_url"):
+                                st.image(row["image_url"], use_container_width=True)
+
+                            st.markdown("---")
 
                 break
 
