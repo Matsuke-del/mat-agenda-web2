@@ -722,7 +722,6 @@ if page == "📊 Statistiques":
 
 if st.session_state.get("show_zoom"):
     popup_zoom_image()
-
 # =========================
 # Plan Usine
 # =========================
@@ -735,109 +734,106 @@ if page == "🏭 Plan Usine":
 
     else:
 
-        st.set_page_config(layout="wide")
-        st.title("🏭 Plan Usine Interactif")
-
         st.write("Clique sur une machine pour afficher les activités.")
-  
-# =========================
-# POSITIONS DU PLAN (à ajuster)
-# =========================
-positions = {
-    "101.A": (20, 20),
-    "111.A": (120, 20),
-    "102.A": (20, 120),
-    "15.A": (120, 120),
 
-    "117": (300, 20),
-    "105": (400, 20),
-    "105.A": (500, 20),
-    "107": (300, 120),
-    "106": (400, 120),
-    "25": (500, 120),
-    "104": (600, 120),
+        # =========================
+        # POSITIONS DU PLAN (à ajuster)
+        # =========================
+        positions = {
+            "101.A": (20, 20),
+            "111.A": (120, 20),
+            "102.A": (20, 120),
+            "15.A": (120, 120),
 
-    "112": (300, 250),
-    "108": (400, 250),
-    "103": (500, 250),
-    "109": (600, 250),
-    "123": (300, 350),
-    "113": (400, 350),
-    "110": (500, 350),
-    "121": (600, 350),
-    "123.A": (300, 450),
-    "114": (400, 450),
-    "119": (500, 450),
-    "115": (600, 450),
+            "117": (300, 20),
+            "105": (400, 20),
+            "105.A": (500, 20),
+            "107": (300, 120),
+            "106": (400, 120),
+            "25": (500, 120),
+            "104": (600, 120),
 
-    "101": (300, 580),
-    "21": (400, 580),
-    "120": (500, 580),
-    "116": (600, 580),
-    "23": (700, 580),
-    "118": (800, 580),
+            "112": (300, 250),
+            "108": (400, 250),
+            "103": (500, 250),
+            "109": (600, 250),
+            "123": (300, 350),
+            "113": (400, 350),
+            "110": (500, 350),
+            "121": (600, 350),
+            "123.A": (300, 450),
+            "114": (400, 450),
+            "119": (500, 450),
+            "115": (600, 450),
 
-    "24": (900, 250),
-    "26": (900, 350),
-    "22": (900, 450),
-    "122": (900, 550),
-    "27": (900, 650),
-}
+            "101": (300, 580),
+            "21": (400, 580),
+            "120": (500, 580),
+            "116": (600, 580),
+            "23": (700, 580),
+            "118": (800, 580),
 
-# =========================
-# ÉTATS DES MACHINES
-# =========================
-status = {machine: "Auto" for machine in positions}
+            "24": (900, 250),
+            "26": (900, 350),
+            "22": (900, 450),
+            "122": (900, 550),
+            "27": (900, 650),
+        }
 
-colors = {
-    "Auto": "#2ecc71",
-    "Arrêt": "#7f8c8d"
-}
+        # =========================
+        # ÉTATS DES MACHINES
+        # =========================
+        status = {machine: "Auto" for machine in positions}
 
-# =========================
-# ACTIVITÉS (exemple)
-# =========================
-activities = {
-    machine: [f"Activité exemple pour {machine}"]
-    for machine in positions
-}
+        colors = {
+            "Auto": "#2ecc71",
+            "Arrêt": "#7f8c8d"
+        }
 
-# =========================
-# AFFICHAGE DU PLAN
-# =========================
-html = """
-<div style='position:relative;width:1200px;height:800px;
-            background:#f0f0f0;border:2px solid #444;'>
-"""
+        # =========================
+        # ACTIVITÉS (exemple)
+        # =========================
+        activities = {
+            machine: [f"Activité exemple pour {machine}"]
+            for machine in positions
+        }
 
-for machine, (x, y) in positions.items():
-    color = colors[status[machine]]
-    html += f"""
-    <button onclick="window.location.href='?machine={machine}'"
-        style="
-            position:absolute;
-            left:{x}px;
-            top:{y}px;
-            width:70px;
-            height:70px;
-            background:{color};
-            border:none;
-            border-radius:6px;
-            color:white;
-            font-weight:bold;
-            cursor:pointer;
-        ">
-        {machine}
-    </button>
-    """
+        # =========================
+        # AFFICHAGE DU PLAN
+        # =========================
+        html = """
+        <div style='position:relative;width:1200px;height:800px;
+                    background:#f0f0f0;border:2px solid #444;'>
+        """
 
-html += "</div>"
+        for machine, (x, y) in positions.items():
+            color = colors[status[machine]]
+            html += f"""
+            <button onclick="window.location.href='?machine={machine}'"
+                style="
+                    position:absolute;
+                    left:{x}px;
+                    top:{y}px;
+                    width:70px;
+                    height:70px;
+                    background:{color};
+                    border:none;
+                    border-radius:6px;
+                    color:white;
+                    font-weight:bold;
+                    cursor:pointer;
+                ">
+                {machine}
+            </button>
+            """
 
-st.markdown(html, unsafe_allow_html=True)
+        html += "</div>"
 
-machine = st.query_params.get("machine", None)
+        st.markdown(html, unsafe_allow_html=True)
 
-if machine:
-    st.subheader(f"📋 Activités pour {machine}")
-    for act in activities[machine]:
-        st.write(f"• {act}")
+        machine = st.query_params.get("machine", None)
+
+        if machine:
+            st.subheader(f"📋 Activités pour {machine}")
+            for act in activities[machine]:
+                st.write(f"• {act}")
