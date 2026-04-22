@@ -448,7 +448,11 @@ def popup_activity(row):
                         st.session_state.zoom_image = img
                         st.session_state.show_zoom = True
                         st.rerun()
-
+# =========================
+# OUVERTURE POPUP ZOOM
+# =========================
+if st.session_state.get("show_zoom"):
+    popup_zoom_image()
 # =========================
 # 📅 CALENDRIER
 # =========================
