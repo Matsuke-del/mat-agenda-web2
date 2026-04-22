@@ -834,10 +834,11 @@ if click:
             st.sidebar.title(f"📋 Activités (zone {machine})")
 
             try:
-                # Requête de base : on récupère TOUT
+                # 1️⃣ Requête de base : filtre machine dans description
                 query = supabase.table("agenda").select("*")
+                query = query.ilike("description", f"%{machine}%")
 
-                # 🔍 Recherche uniquement dans description
+                # 2️⃣ Filtre recherche utilisateur (optionnel)
                 if search:
                     query = query.ilike("description", f"%{search}%")
 
