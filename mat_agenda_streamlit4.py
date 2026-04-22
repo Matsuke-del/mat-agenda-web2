@@ -953,21 +953,21 @@ if page == "🏭 Plan Usine":
                 else:
                     for row in data:
                         st.sidebar.markdown(f"""
-### 📝 {row.get('description', '-')}
+                        ### 📝 {row.get('description', '-')}
 
-📅 {row.get('date', '-')}
+                        📅 {row.get('date', '-')}
 
-⏰ {row.get('debut', '-')} → {row.get('fin', '-')}
+                        ⏰ {row.get('debut', '-')} → {row.get('fin', '-')}
 
-👷 {row.get('technicien', 'Non défini')}
-""")
+                        👷 {row.get('technicien', 'Non défini')}
+                        """)
 
-                        if row.get("image_url"):
-                            st.sidebar.image(row["image_url"], use_container_width=True)
+                            if row.get("image_url"):
+                                st.sidebar.image(row["image_url"], use_container_width=True)
 
-                        st.sidebar.markdown("---")
+                            st.sidebar.markdown("---")
 
-                break
+                    break
 
-        if not found:
-            st.warning("Aucune machine ici")
+            if not found:
+                st.warning("Aucune machine ici")
