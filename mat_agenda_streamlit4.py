@@ -726,14 +726,6 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 from supabase import create_client
 from datetime import datetime
 
-def format_date_fr(date_str):
-    try:
-        # Format Supabase : "2026-04-08"
-        d = datetime.strptime(date_str, "%Y-%m-%d")
-        return d.strftime("%d/%m/%Y")
-    except:
-        return date_str  # si déjà formatée ou invalide
-
 # =========================
 # PAGE PLAN USINE
 # =========================
@@ -873,7 +865,7 @@ if page == "🏭 Plan Usine":
                             st.subheader("📄 Description")
                             st.code(row.get("description", "-"))
 
-                            st.write(f"📅 {row.get('date', '-')}")
+                            st.write(f"📅 {format_date_fr(row.get('date', '-'))}")
                             st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
 
                         # Bouton fermer
