@@ -826,16 +826,19 @@ if page == "🏭 Plan Usine":
                 key = st.secrets["supabase_key"]
                 supabase = create_client(url, key)
 
-                # Requête
+                # Requête corrigée
                 try:
                     data = (
                         supabase
                         .table("agenda")
                         .select("*")
-                        .ilike("description", f"%{machine}%")
+                        .eq("machine", machine)   # 🔥 FIX PRINCIPAL
                         .execute()
                         .data
                     )
+
+                    st.write("DEBUG DATA :", data)  # 👈 DEBUG
+
                 except Exception as e:
                     st.sidebar.error("❌ Erreur Supabase.")
                     st.sidebar.write(e)
