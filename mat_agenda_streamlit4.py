@@ -288,6 +288,15 @@ if "reset_sidebar" not in st.session_state:
     st.session_state.reset_sidebar = False
 
 # =========================
+# INIT SESSION STATE
+# =========================
+from datetime import datetime, time
+import json
+
+if "reset_sidebar" not in st.session_state:
+    st.session_state.reset_sidebar = False
+
+# =========================
 # RESET AVANT AFFICHAGE (IMPORTANT)
 # =========================
 if st.session_state.reset_sidebar:
@@ -300,6 +309,7 @@ if st.session_state.reset_sidebar:
     # on garde le technicien (plus pratique)
 
     st.session_state.reset_sidebar = False
+
 # =========================
 # AJOUT ACTIVITE
 # =========================
