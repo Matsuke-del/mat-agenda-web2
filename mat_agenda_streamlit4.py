@@ -793,97 +793,72 @@ if page == "🏭 Plan Usine":
     click = streamlit_image_coordinates(
         image,
         key="plan",
-        width=image.width  # IMPORTANT : taille réelle pour clics corrects
+        width=image.width
     )
 
-# =========================
-# DÉTECTION DU CLIC
-# =========================
-if click:
-    x, y = click["x"], click["y"]
-    st.write(f"📍 Position cliquée : {x}, {y}")
+    # =========================
+    # DÉTECTION DU CLIC
+    # =========================
+    if click:
+        x, y = click["x"], click["y"]
+        st.write(f"📍 Position cliquée : {x}, {y}")
 
-    found = False
+        found = False
 
-    for machine, (x1, y1, x2, y2) in zones.items():
-        if x1 <= x <= x2 and y1 <= y <= y2:
+        for machine, (x1, y1, x2, y2) in zones.items():
+            if x1 <= x <= x2 and y1 <= y <= y2:
 
-            found = True
-            st.success(f"🟩 Machine sélectionnée : {machine}")
+                found = True
+                st.success(f"🟩 Machine sélectionnée : {machine}")
 
-            # =========================
-            # PANNEAU LATÉRAL ACTIVITÉS
-            # =========================
-            st.sidebar.title(f"📋 Activités pour {machine}")
+                # =========================
+                # PANNEAU LATÉRAL ACTIVITÉS
+                # =========================
+                st.sidebar.title(f"📋 Activités pour {machine}")
 
-            # =========================
-            # VÉRIFICATION DES SECRETS
-            # =========================
-            if "supabase_url" not in st.secrets or "supabase_key" not in st.secrets:
-                st.sidebar.error("❌ Les clés Supabase ne sont pas configurées dans Streamlit Cloud.")
-                st.sidebar.info("""
-                Ajoute dans Settings → Secrets :
+                # Vérification des secrets
+                if "supabase_url" not in st.secrets or "supabase_key" not in st.secrets:
+                    st.sidebar.error("❌ Clés Supabase manquantes dans Streamlit Cloud.")
+                    break
 
-                supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
-                supabase_key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
-                """)
+                # Connexion Supabase
+                url = st.secrets["supabase_url"]
+                key = st.secrets["supabase_key"]
+                supabase = create_client(url, key)
+
+                # Requête
+                try:
+                    data = (
+                        supabase
+                        .table("agenda")
+                        .select("*")
+                        .ilike("description", f"%{machine}%")
+                        .execute()
+                        .data
+                    )
+                except Exception as e:
+                    st.sidebar.error("❌ Erreur Supabase.")
+                    st.sidebar.write(e)
+                    break
+
+                # Affichage
+                if not data:
+                    st.sidebar.warning("Aucune activité trouvée.")
+                else:
+                    for row in data:
+                        st.sidebar.markdown(f"""
+                        ### 📝 {row['description']}
+                        📅 {row['date']}
+                        👷 {row.get('technicien', 'Non défini')}
+                        """)
+
+                        if row.get("image_url"):
+                            st.sidebar.image(row["image_url"], use_container_width=True)
+
+                        st.sidebar.markdown("---")
+
                 break
 
-            # =========================
-            # CONNEXION SUPABASE
-            # =========================
-            from supabase import create_client
-            url = st.secrets["supabase_url"]
-            key = st.secrets["supabase_key"]
-            supabase = create_client(url, key)
-
-            # =========================
-            # REQUÊTE : TABLE AGENDA
-            # =========================
-            try:
-                query = (
-                    supabase
-                    .table("agenda")
-                    .select("*")
-                    .ilike("description", f"%{machine}%")
-                )
-
-                data = query.execute().data
-
-            except Exception as e:
-                st.sidebar.error("❌ Erreur Supabase (table, colonnes ou RLS).")
-                st.sidebar.write(e)
-                break
-
-            # =========================
-            # AFFICHAGE DES ACTIVITÉS
-            # =========================
-            if not data:
-                st.sidebar.warning("Aucune activité trouvée.")
-            else:
-                for row in data:
-                    st.sidebar.markdown(f"""
-                    ### 📝 {row['description']}
-                    📅 {row['date']}
-                    👷 {row.get('technicien', 'Non défini')}
-                    """)
-
-                    # Affichage image(s)
-                    if row.get("image_url"):
-                        import json
-                        try:
-                            images = json.loads(row["image_url"])
-                        except:
-                            images = [row["image_url"]]
-
-                        for img in images:
-                            if img and str(img).startswith("http"):
-                                st.sidebar.image(img, use_container_width=True)
-
-                    st.sidebar.markdown("---")
-
-            break
-
-    if not found:
-        st.warning("Aucune machine ici")
+        if not found:
+            st.warning("Aucune machine ici")
 
