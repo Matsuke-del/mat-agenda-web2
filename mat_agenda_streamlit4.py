@@ -725,6 +725,7 @@ if st.session_state.get("show_zoom"):
 # =========================
 # Plan Usine
 # =========================
+
 if page == "🏭 Plan Usine":
 
     st.header("🏭 Plan Usine")
@@ -834,3 +835,4 @@ if page == "🏭 Plan Usine":
         st.subheader(f"📋 Activités pour {machine}")
         for act in activities[machine]:
             st.write(f"• {act}")
+
