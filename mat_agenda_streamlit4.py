@@ -850,7 +850,7 @@ if click:
                 break
 
             # =========================
-            # AFFICHAGE IDENTIQUE À TA PAGE LISTE
+            # AFFICHAGE SANS DÉBUT / FIN
             # =========================
             if not data:
                 st.info("Aucune activité trouvée")
@@ -865,7 +865,6 @@ if click:
                         st.code(row.get("description", "-"))
 
                         st.write(f"📅 {row.get('date', '-')}")
-                        st.write(f"⏰ {row.get('debut', '-')} → {row.get('fin', '-')}")
                         st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
 
                         # Bouton fermer
@@ -878,9 +877,7 @@ if click:
                             st.session_state["edit_id"] = row["id"]
                             st.session_state["edit_desc"] = row["description"]
                             st.session_state["edit_date"] = row["date"]
-                            st.session_state["edit_debut"] = row["debut"]
-                            st.session_state["edit_fin"] = row["fin"]
-                            st.session_state["edit_images"] = row.get("image_url", "[]")
+                            st.session_state["edit_technicien"] = row.get("technicien", "")
                             st.stop()
 
                     # --- Colonne supprimer ---
