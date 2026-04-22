@@ -836,8 +836,16 @@ if page == "🏭 Plan Usine":
 
                 try:
                 # 1️⃣ Filtre automatique par zone cliquée
-                    query = supabase.table("agenda").select("*")
-                    query = query.ilike("description", f"%{machine}%")
+                    query = supabase.table("agenda").select("*)
+                    query = supabase.table("agenda").select("*").or_(
+                        f"description.ilike.{machine_num},"                      # 07
+                        f"description.ilike.{machine_num}[a-zA-Z]%,"             # 07a / 07b / 07A / 07B
+                        f"description.ilike.{machine_num}[-_/.) ]%,"             # 07- / 07/ / 07. / 07)
+                        f"description.ilike.% {machine_num},"                    # espace + 07
+                        f"description.ilike.% {machine_num}[a-zA-Z]%,"           # espace + 07a
+                        f"description.ilike.% {machine_num}[-_/.) ]%"            # espace + 07-
+                    )
+
 
                 # 2️⃣ Filtre recherche utilisateur (optionnel)
                     if search:
