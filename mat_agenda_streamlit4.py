@@ -728,9 +728,6 @@ if page == "🏭 Plan Usine":
     st.header("🏭 Plan Usine")
     st.write("Clique sur une machine pour afficher les activités.")
 
-    # =========================
-    # 1. Charger l'image du plan
-    # =========================
     plan_path = "Plan_usine.png"
 
     import os
@@ -738,12 +735,6 @@ if page == "🏭 Plan Usine":
         st.error(f"❌ Image introuvable : {plan_path}")
     else:
 
-        # Affichage de l'image
-        st.image(plan_path, use_container_width=True)
-
-        # =========================
-        # 2. Définir les zones cliquables
-        # =========================
         zones = {
             "101.A": (50, 80, 80, 80),
             "111.A": (180, 80, 80, 80),
@@ -751,12 +742,9 @@ if page == "🏭 Plan Usine":
             "105": (450, 200, 80, 80),
         }
 
-        # =========================
-        # 3. Superposition HTML
-        # =========================
         html = f"""
         <div style='position:relative; width:100%;'>
-            <img src='{plan_path}' style='width:100%;'>
+            <img src='{plan_path}' style='width:100%; display:block;'>
         """
 
         for machine, (x, y, w, h) in zones.items():
@@ -770,8 +758,8 @@ if page == "🏭 Plan Usine":
                 background:rgba(0,255,0,0.25);
                 border:2px solid #00ff00;
                 border-radius:6px;
-                display:block;
                 cursor:pointer;
+                display:block;
             "></a>
             """
 
@@ -779,9 +767,6 @@ if page == "🏭 Plan Usine":
 
         st.markdown(html, unsafe_allow_html=True)
 
-        # =========================
-        # 4. Popup activité
-        # =========================
         machine = st.query_params.get("machine", None)
 
         if machine:
