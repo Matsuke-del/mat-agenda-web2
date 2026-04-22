@@ -731,8 +731,10 @@ if page == "🏭 Plan Usine":
     plan_path = "Plan_usine.png"
 
     import os
+    st.write("Image trouvée :", os.path.exists(plan_path))
+
     if not os.path.exists(plan_path):
-        st.error(f"❌ Image introuvable : {plan_path}")
+        st.error("❌ L'image du plan est introuvable. Place-la dans le même dossier que ton script.")
     else:
 
         zones = {
@@ -766,9 +768,3 @@ if page == "🏭 Plan Usine":
         html += "</div>"
 
         st.markdown(html, unsafe_allow_html=True)
-
-        machine = st.query_params.get("machine", None)
-
-        if machine:
-            st.subheader(f"📋 Activités pour {machine}")
-            st.write("Ici tu affiches les activités Supabase…")
