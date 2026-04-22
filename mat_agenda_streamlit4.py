@@ -811,41 +811,41 @@ if click:
             st.success(f"🟩 Machine sélectionnée : {machine}")
 
             # =========================
-            # POPUP ACTIVITÉS
+            # PANNEAU LATÉRAL ACTIVITÉS
             # =========================
-            with st.dialog(f"📋 Activités pour la machine {machine}"):
+            st.sidebar.title(f"📋 Activités : {machine}")
 
-                # Connexion Supabase
-                from supabase import create_client
+            # Connexion Supabase
+            from supabase import create_client
 
-                url = st.secrets["supabase"]["url"]
-                key = st.secrets["supabase"]["key"]
-                supabase = create_client(url, key)
+            url = st.secrets["supabase"]["url"]
+            key = st.secrets["supabase"]["key"]
+            supabase = create_client(url, key)
 
-                # Récupérer toutes les activités contenant le numéro de machine
-                query = (
-                    supabase
-                    .table("activites")
-                    .select("*")
-                    .ilike("description", f"%{machine}%")
-                )
+            # Récupérer les activités contenant le numéro de machine
+            query = (
+                supabase
+                .table("activites")
+                .select("*")
+                .ilike("description", f"%{machine}%")
+            )
 
-                data = query.execute().data
+            data = query.execute().data
 
-                # Affichage
-                if not data:
-                    st.warning("Aucune activité trouvée pour cette machine.")
-                else:
-                    for row in data:
-                        st.markdown(f"""
-                        ### 📝 {row['description']}
-                        📅 Date : {row['date']}  
-                        ⏰ {row['debut']} → {row['fin']}  
-                        👷 Technicien : {row.get('technicien', 'Non défini')}
-                        ---
-                        """)
+            if not data:
+                st.sidebar.warning("Aucune activité trouvée.")
+            else:
+                for row in data:
+                    st.sidebar.markdown(f"""
+                    ### 📝 {row['description']}
+                    📅 {row['date']}  
+                    ⏰ {row['debut']} → {row['fin']}  
+                    👷 {row.get('technicien', 'Non défini')}
+                    ---
+                    """)
 
             break
 
     if not found:
         st.warning("Aucune machine ici")
+
