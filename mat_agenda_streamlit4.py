@@ -731,108 +731,58 @@ if page == "🏭 Plan Usine":
     st.header("🏭 Plan Usine")
     st.write("Clique sur une machine pour afficher les activités.")
 
-    # =========================
-    # POSITIONS DU PLAN
-    # =========================
-    positions = {
-        "101.A": (20, 20),
-        "111.A": (120, 20),
-        "102.A": (20, 120),
-        "15.A": (120, 120),
+# =========================
+# 1. Charger l'image du plan
+# =========================
+plan_path = "plan_usine.png"   # mets ton vrai chemin ici
+st.image(plan_path, use_container_width=True)
 
-        "117": (300, 20),
-        "105": (400, 20),
-        "105.A": (500, 20),
-        "107": (300, 120),
-        "106": (400, 120),
-        "25": (500, 120),
-        "104": (600, 120),
+# =========================
+# 2. Définir les zones cliquables
+# =========================
+# Format : machine : (x, y, width, height)
+zones = {
+    "101.A": (50, 80, 80, 80),
+    "111.A": (180, 80, 80, 80),
+    "117": (350, 200, 80, 80),
+    "105": (450, 200, 80, 80),
+    # ajoute les autres ici…
+}
 
-        "112": (300, 250),
-        "108": (400, 250),
-        "103": (500, 250),
-        "109": (600, 250),
-        "123": (300, 350),
-        "113": (400, 350),
-        "110": (500, 350),
-        "121": (600, 350),
-        "123.A": (300, 450),
-        "114": (400, 450),
-        "119": (500, 450),
-        "115": (600, 450),
+# =========================
+# 3. Superposition HTML
+# =========================
+html = """
+<div style='position:relative; width:100%;'>
+    <img src='{}' style='width:100%;'>
+""".format(plan_path)
 
-        "101": (300, 580),
-        "21": (400, 580),
-        "120": (500, 580),
-        "116": (600, 580),
-        "23": (700, 580),
-        "118": (800, 580),
-
-        "24": (900, 250),
-        "26": (900, 350),
-        "22": (900, 450),
-        "122": (900, 550),
-        "27": (900, 650),
-    }
-
-    # =========================
-    # ÉTATS DES MACHINES
-    # =========================
-    status = {machine: "Auto" for machine in positions}
-
-    colors = {
-        "Auto": "#2ecc71",
-        "Arrêt": "#7f8c8d"
-    }
-
-    # =========================
-    # ACTIVITÉS (exemple)
-    # =========================
-    activities = {
-        machine: [f"Activité exemple pour {machine}"]
-        for machine in positions
-    }
-
-    # =========================
-    # AFFICHAGE DU PLAN
-    # =========================
-    html = """
-    <div style='position:relative;width:1200px;height:800px;
-                background:#f0f0f0;border:2px solid #444;'>
+for machine, (x, y, w, h) in zones.items():
+    html += f"""
+    <button onclick="window.location.href='?machine={machine}'"
+        style="
+            position:absolute;
+            left:{x}px;
+            top:{y}px;
+            width:{w}px;
+            height:{h}px;
+            background:rgba(0,255,0,0.3);   /* vert transparent */
+            border:2px solid #00ff00;
+            border-radius:6px;
+            cursor:pointer;
+        ">
+    </button>
     """
 
-    for machine, (x, y) in positions.items():
-        color = colors[status[machine]]
-        html += f"""
-        <button onclick="window.location.href='?machine={machine}'"
-            style="
-                position:absolute;
-                left:{x}px;
-                top:{y}px;
-                width:70px;
-                height:70px;
-                background:{color};
-                border:none;
-                border-radius:6px;
-                color:white;
-                font-weight:bold;
-                cursor:pointer;
-            ">
-            {machine}
-        </button>
-        """
+html += "</div>"
 
-    html += "</div>"
+st.markdown(html, unsafe_allow_html=True)
 
-    st.markdown(html, unsafe_allow_html=True)
+# =========================
+# 4. Popup activité
+# =========================
+machine = st.query_params.get("machine", None)
 
-    # =========================
-    # ACTIVITÉS CLIQUÉES
-    # =========================
-    machine = st.query_params.get("machine", None)
-
-    if machine:
-        st.subheader(f"📋 Activités pour {machine}")
-        for act in activities[machine]:
-            st.write(f"• {act}")
-
+if machine:
+    st.subheader(f"📋 Activités pour {machine}")
+    st.write("Ici tu affiches les activités Supabase…")
