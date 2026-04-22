@@ -834,19 +834,12 @@ if click:
 
             st.sidebar.title(f"📋 Activités (zone {machine})")
 
-            # Machine sous forme "07"
-            machine_num = machine  
+            machine_num = machine  # ex: "07"
 
             try:
-                # 1️⃣ Filtre intelligent : 07 doit être un mot ou début de mot
-                query = supabase.table("agenda").select("*").or_(
-                    f"description.ilike.{machine_num},"                      # 07
-                    f"description.ilike.{machine_num}[a-zA-Z]%,"             # 07a / 07b
-                    f"description.ilike.{machine_num}[-_/.) ]%,"             # 07- / 07/ / 07.
-                    f"description.ilike.% {machine_num},"                    # espace + 07
-                    f"description.ilike.% {machine_num}[a-zA-Z]%,"           # espace + 07a
-                    f"description.ilike.% {machine_num}[-_/.) ]%"            # espace + 07-
-                )
+                # 1️⃣ Récupération brute : toutes les descriptions contenant "07"
+                query = supabase.table("agenda").select("*")
+                query = query.ilike("description", f"%{machine_num}%")
 
                 # 2️⃣ Filtre recherche utilisateur
                 if search:
@@ -860,12 +853,27 @@ if click:
                 break
 
             # =========================
+            # 3️⃣ FILTRAGE PYTHON FIABLE (regex)
+            # =========================
+            import re
+
+            # REGLE :
+            # 07 doit être en début de mot
+            # et NE DOIT PAS être suivi d’un chiffre
+            pattern = re.compile(rf"\b{machine_num}(?!\d)", re.IGNORECASE)
+
+            filtered_data = [
+                row for row in data
+                if pattern.search(row.get("description", ""))
+            ]
+
+            # =========================
             # AFFICHAGE
             # =========================
-            if not data:
+            if not filtered_data:
                 st.info("Aucune activité trouvée")
             else:
-                for row in data:
+                for row in filtered_data:
 
                     col1, col2, col3 = st.columns([6, 1, 1])
 
