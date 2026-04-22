@@ -832,18 +832,11 @@ if page == "🏭 Plan Usine":
                         supabase
                         .table("agenda")
                         .select("*")
-                        .eq("machine", machine)   # 🔥 FIX PRINCIPAL
+                        .ilike("machine", f"%{machine}%")   # 🔥 FIX MAGIQUE
                         .execute()
                         .data
                     )
-
-                    st.write("DEBUG DATA :", data)  # 👈 DEBUG
-
-                except Exception as e:
-                    st.sidebar.error("❌ Erreur Supabase.")
-                    st.sidebar.write(e)
-                    break
-
+                    
                 # Affichage
                 if not data:
                     st.sidebar.warning("Aucune activité trouvée.")
