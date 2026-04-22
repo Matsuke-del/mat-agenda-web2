@@ -818,8 +818,8 @@ if click:
 
             # Connexion Supabase
             from supabase import create_client
-            url = st.secrets["supabase_url"]
-            key = st.secrets["supabase_key"]
+            supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
+            supabase_key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
             supabase = create_client(url, key)
 
             # Récupérer les activités contenant le numéro de machine
