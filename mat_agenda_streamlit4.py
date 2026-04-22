@@ -741,8 +741,8 @@ if page == "🏭 Plan Usine":
         st.stop()
 
     supabase = create_client(
-        st.secrets["supabase_url"],
-        st.secrets["supabase_key"]
+        st.secrets["https://quamffmaxqhhtyxworou.supabase.co"],
+        st.secrets["sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"]
     )
 
     # =========================
