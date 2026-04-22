@@ -722,3 +722,111 @@ if page == "📊 Statistiques":
         
 if st.session_state.get("show_zoom"):
     popup_zoom_image()
+
+import streamlit as st
+
+st.set_page_config(layout="wide")
+st.title("🧭 Plan Usine Interactif – Recréation complète")
+
+# -----------------------------
+# 1. Définition des positions EXACTES (à remplir)
+# -----------------------------
+positions = {
+    # STOCKAGE GRANDE SALLE
+    "101.A": (0, 0),
+    "111.A": (0, 0),
+    "102.A": (0, 0),
+    "15.A": (0, 0),
+
+    # PATISSERIE
+    "117": (0, 0),
+    "105": (0, 0),
+    "105.A": (0, 0),
+    "107": (0, 0),
+    "106": (0, 0),
+    "25": (0, 0),
+    "104": (0, 0),
+
+    # VIENNOISERIE
+    "112": (0, 0),
+    "108": (0, 0),
+    "103": (0, 0),
+    "109": (0, 0),
+    "123": (0, 0),
+    "113": (0, 0),
+    "110": (0, 0),
+    "121": (0, 0),
+    "123.A": (0, 0),
+    "114": (0, 0),
+    "119": (0, 0),
+    "115": (0, 0),
+
+    # MECATHERM
+    "101": (0, 0),
+    "21": (0, 0),
+    "120": (0, 0),
+    "116": (0, 0),
+    "23": (0, 0),
+    "118": (0, 0),
+
+    # ATELIER PAIN FRAIS
+    "24": (0, 0),
+    "26": (0, 0),
+    "22": (0, 0),
+    "122": (0, 0),
+    "27": (0, 0),
+}
+
+# -----------------------------
+# 2. États des machines
+# -----------------------------
+status = {machine: "Auto" for machine in positions}  # tout vert pour l'instant
+
+colors = {
+    "Auto": "#2ecc71",
+    "Arrêt": "#7f8c8d"
+}
+
+# -----------------------------
+# 3. Activités (exemple)
+# -----------------------------
+activities = {machine: [f"Activité exemple pour {machine}"] for machine in positions}
+
+# -----------------------------
+# 4. Construction du plan
+# -----------------------------
+html = """
+<div style='position:relative;width:1200px;height:800px;border:2px solid #444;background:#f5f5f5;'>
+"""
+
+for machine, (x, y) in positions.items():
+    color = colors[status[machine]]
+    html += f"""
+    <button onclick="window.location.href='?machine={machine}'"
+        style="
+            position:absolute;
+            left:{x}px;
+            top:{y}px;
+            width:70px;
+            height:70px;
+            background:{color};
+            border:none;
+            border-radius:6px;
+            color:white;
+            font-weight:bold;
+            cursor:pointer;
+        ">
+        {machine}
+    </button>
+    """
+
+html += "</div>"
+
+st.markdown(html, unsafe_allow_html=True)
+
+machine = st.query_params.get("machine", None)
+if machine:
+    st.success(f"📋 Activités pour {machine}")
+    for act in activities[machine]:
+        st.write(f"• {act}")
+
