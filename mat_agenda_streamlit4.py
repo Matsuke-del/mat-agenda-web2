@@ -795,26 +795,57 @@ if page == "🏭 Plan Usine":
         width=image.width  # IMPORTANT : taille réelle pour clics corrects
     )
 
-    # =========================
-    # DÉTECTION DU CLIC
-    # =========================
-    if click:
-        x, y = click["x"], click["y"]
-        st.write(f"📍 Position cliquée : {x}, {y}")
+# =========================
+# DÉTECTION DU CLIC
+# =========================
+if click:
+    x, y = click["x"], click["y"]
+    st.write(f"📍 Position cliquée : {x}, {y}")
 
-        found = False
+    found = False
 
-        for machine, (x1, y1, x2, y2) in zones.items():
-            if x1 <= x <= x2 and y1 <= y <= y2:
-                st.success(f"🟩 Machine sélectionnée : {machine}")
+    for machine, (x1, y1, x2, y2) in zones.items():
+        if x1 <= x <= x2 and y1 <= y <= y2:
 
-                # Ici tu pourras afficher les activités Supabase
-                st.subheader("📋 Activités")
-                st.write("• Exemple activité 1")
-                st.write("• Exemple activité 2")
+            found = True
+            st.success(f"🟩 Machine sélectionnée : {machine}")
 
-                found = True
-                break
+            # =========================
+            # POPUP ACTIVITÉS
+            # =========================
+            with st.dialog(f"📋 Activités pour la machine {machine}"):
 
-        if not found:
-            st.warning("Aucune machine ici")
+                # Connexion Supabase
+                from supabase import create_client
+
+                url = st.secrets["supabase"]["url"]
+                key = st.secrets["supabase"]["key"]
+                supabase = create_client(url, key)
+
+                # Récupérer toutes les activités contenant le numéro de machine
+                query = (
+                    supabase
+                    .table("activites")
+                    .select("*")
+                    .ilike("description", f"%{machine}%")
+                )
+
+                data = query.execute().data
+
+                # Affichage
+                if not data:
+                    st.warning("Aucune activité trouvée pour cette machine.")
+                else:
+                    for row in data:
+                        st.markdown(f"""
+                        ### 📝 {row['description']}
+                        📅 Date : {row['date']}  
+                        ⏰ {row['debut']} → {row['fin']}  
+                        👷 Technicien : {row.get('technicien', 'Non défini')}
+                        ---
+                        """)
+
+            break
+
+    if not found:
+        st.warning("Aucune machine ici")
