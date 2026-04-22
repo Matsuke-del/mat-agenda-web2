@@ -723,6 +723,8 @@ if page == "📊 Statistiques":
 # =========================
 # Plan Usine
 # =========================
+import base64
+
 if page == "🏭 Plan Usine":
 
     st.header("🏭 Plan Usine")
@@ -730,13 +732,17 @@ if page == "🏭 Plan Usine":
 
     plan_path = "Plan_usine.png"
 
+    # Vérifier que l'image existe
     import os
-    st.write("Image trouvée :", os.path.exists(plan_path))
-
     if not os.path.exists(plan_path):
-        st.error("❌ L'image du plan est introuvable. Place-la dans le même dossier que ton script.")
+        st.error("❌ Image introuvable.")
     else:
+        # Convertir l'image en base64
+        with open(plan_path, "rb") as f:
+            img_bytes = f.read()
+            img_base64 = base64.b64encode(img_bytes).decode()
 
+        # Zones cliquables
         zones = {
             "101.A": (50, 80, 80, 80),
             "111.A": (180, 80, 80, 80),
@@ -744,9 +750,10 @@ if page == "🏭 Plan Usine":
             "105": (450, 200, 80, 80),
         }
 
+        # HTML avec image base64
         html = f"""
         <div style='position:relative; width:100%;'>
-            <img src='{plan_path}' style='width:100%; display:block;'>
+            <img src='data:image/png;base64,{img_base64}' style='width:100%; display:block;'>
         """
 
         for machine, (x, y, w, h) in zones.items():
@@ -768,3 +775,10 @@ if page == "🏭 Plan Usine":
         html += "</div>"
 
         st.markdown(html, unsafe_allow_html=True)
+
+        # Popup activité
+        machine = st.query_params.get("machine", None)
+        if machine:
+            st.subheader(f"📋 Activités pour {machine}")
+            st.write("Ici tu affiches les activités Supabase…")
+
