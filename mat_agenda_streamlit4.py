@@ -867,3 +867,5 @@ if page == "🏭 Plan Usine":
 
         if not found:
             st.warning("Aucune machine ici")
+            
+st.sidebar.write("DEBUG DATA :", data)
