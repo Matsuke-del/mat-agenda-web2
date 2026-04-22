@@ -720,65 +720,45 @@ if page == "📊 Statistiques":
 
         st.bar_chart(stats)
 
-# =========================
-# Plan Usine
-# =========================
-import base64
+import streamlit as st
+from PIL import Image
+from streamlit_image_coordinates import streamlit_image_coordinates
 
 if page == "🏭 Plan Usine":
 
     st.header("🏭 Plan Usine")
     st.write("Clique sur une machine pour afficher les activités.")
 
-    plan_path = "Plan_usine.png"
+    # Charger l'image
+    image = Image.open("Plan_usine.png")
 
-    # Vérifier que l'image existe
-    import os
-    if not os.path.exists(plan_path):
-        st.error("❌ Image introuvable.")
-    else:
-        # Convertir l'image en base64
-        with open(plan_path, "rb") as f:
-            img_bytes = f.read()
-            img_base64 = base64.b64encode(img_bytes).decode()
+    # Définir les zones (x1, y1, x2, y2)
+    zones = {
+        "101.A": (50, 80, 130, 160),
+        "111.A": (180, 80, 260, 160),
+        "117": (350, 200, 430, 280),
+        "105": (450, 200, 530, 280),
+    }
 
-        # Zones cliquables
-        zones = {
-            "101.A": (50, 80, 80, 80),
-            "111.A": (180, 80, 80, 80),
-            "117": (350, 200, 80, 80),
-            "105": (450, 200, 80, 80),
-        }
+    # Afficher l'image cliquable
+    click = streamlit_image_coordinates(image, key="plan")
 
-        # HTML avec image base64
-        html = f"""
-        <div style='position:relative; width:100%;'>
-            <img src='data:image/png;base64,{img_base64}' style='width:100%; display:block;'>
-        """
+    if click:
+        x, y = click["x"], click["y"]
+        st.write(f"📍 Position cliquée : {x}, {y}")
 
-        for machine, (x, y, w, h) in zones.items():
-            html += f"""
-            <a href='?machine={machine}' style="
-                position:absolute;
-                left:{x}px;
-                top:{y}px;
-                width:{w}px;
-                height:{h}px;
-                background:rgba(0,255,0,0.25);
-                border:2px solid #00ff00;
-                border-radius:6px;
-                cursor:pointer;
-                display:block;
-            "></a>
-            """
+        found = False
 
-        html += "</div>"
+        for machine, (x1, y1, x2, y2) in zones.items():
+            if x1 <= x <= x2 and y1 <= y <= y2:
+                st.success(f"🟩 Machine sélectionnée : {machine}")
 
-        st.markdown(html, unsafe_allow_html=True)
+                st.subheader("📋 Activités")
+                st.write("• Exemple activité 1")
+                st.write("• Exemple activité 2")
 
-        # Popup activité
-        machine = st.query_params.get("machine", None)
-        if machine:
-            st.subheader(f"📋 Activités pour {machine}")
-            st.write("Ici tu affiches les activités Supabase…")
+                found = True
+                break
 
+        if not found:
+            st.warning("Aucune machine ici")
