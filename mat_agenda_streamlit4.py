@@ -734,7 +734,7 @@ if page == "🏭 Plan Usine":
 # =========================
 # 1. Charger l'image du plan
 # =========================
-plan_path = "plan_usine.png"   # mets ton vrai chemin ici
+plan_path = "Plan_usine.png"   # mets ton vrai chemin ici
 st.image(plan_path, use_container_width=True)
 
 # =========================
