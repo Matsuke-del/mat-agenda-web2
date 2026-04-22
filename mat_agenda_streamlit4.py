@@ -723,6 +723,7 @@ if page == "📊 Statistiques":
 import streamlit as st
 from PIL import Image
 from streamlit_image_coordinates import streamlit_image_coordinates
+from supabase import create_client
 
 # =========================
 # PAGE PLAN USINE
@@ -795,56 +796,54 @@ if page == "🏭 Plan Usine":
         width=image.width  # IMPORTANT : taille réelle pour clics corrects
     )
 
-# =========================
-# DÉTECTION DU CLIC
-# =========================
-if click:
-    x, y = click["x"], click["y"]
-    st.write(f"📍 Position cliquée : {x}, {y}")
+    # =========================
+    # DÉTECTION DU CLIC
+    # =========================
+    if click:
+        x, y = click["x"], click["y"]
+        st.write(f"📍 Position cliquée : {x}, {y}")
 
-    found = False
+        found = False
 
-    for machine, (x1, y1, x2, y2) in zones.items():
-        if x1 <= x <= x2 and y1 <= y <= y2:
+        for machine, (x1, y1, x2, y2) in zones.items():
+            if x1 <= x <= x2 and y1 <= y <= y2:
 
-            found = True
-            st.success(f"🟩 Machine sélectionnée : {machine}")
+                found = True
+                st.success(f"🟩 Machine sélectionnée : {machine}")
 
-            # =========================
-            # PANNEAU LATÉRAL ACTIVITÉS
-            # =========================
-            st.sidebar.title(f"📋 Activités pour {machine}")
+                # =========================
+                # PANNEAU LATÉRAL ACTIVITÉS
+                # =========================
+                st.sidebar.title(f"📋 Activités pour {machine}")
 
-            # Connexion Supabase
-            from supabase import create_client
+                # Connexion Supabase
+                url = st.secrets["supabase_url"]
+                key = st.secrets["supabase_key"]
+                supabase = create_client(url, key)
 
-            url = st.secrets["supabase_url"]
-            key = st.secrets["supabase_key"]
-            supabase = create_client(url, key)
+                # Récupérer les activités contenant le numéro de machine
+                query = (
+                    supabase
+                    .table("activites")
+                    .select("*")
+                    .ilike("description", f"%{machine}%")
+                )
 
-            # Récupérer les activités contenant le numéro de machine
-            query = (
-                supabase
-                .table("activites")
-                .select("*")
-                .ilike("description", f"%{machine}%")
-            )
+                data = query.execute().data
 
-            data = query.execute().data
+                if not data:
+                    st.sidebar.warning("Aucune activité trouvée.")
+                else:
+                    for row in data:
+                        st.sidebar.markdown(f"""
+                        ### 📝 {row['description']}
+                        📅 {row['date']}
+                        ⏰ {row['debut']} → {row['fin']}
+                        👷 {row.get('technicien', 'Non défini')}
+                        ---
+                        """)
 
-            if not data:
-                st.sidebar.warning("Aucune activité trouvée.")
-            else:
-                for row in data:
-                    st.sidebar.markdown(f"""
-                    ### 📝 {row['description']}
-                    📅 {row['date']}  
-                    ⏰ {row['debut']} → {row['fin']}  
-                    👷 {row.get('technicien', 'Non défini')}
-                    ---
-                    """)
+                break
 
-            break
-
-    if not found:
-        st.warning("Aucune machine ici")
+        if not found:
+            st.warning("Aucune machine ici")
