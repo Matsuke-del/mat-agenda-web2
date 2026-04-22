@@ -816,56 +816,56 @@ if page == "🏭 Plan Usine":
     # =========================
     search = st.sidebar.text_input("🔍 Recherche activité")
 
-    # =========================
-    # DETECTION CLIC
-    # =========================
-    if click:
-        x, y = click["x"], click["y"]
-        st.write(f"📍 Position cliquée : {x}, {y}")
+# =========================
+# DETECTION CLIC
+# =========================
+if click:
+    x, y = click["x"], click["y"]
+    st.write(f"📍 Position cliquée : {x}, {y}")
 
-        found = False
+    found = False
 
-        for machine, (x1, y1, x2, y2) in zones.items():
-            if x1 <= x <= x2 and y1 <= y <= y2:
+    for machine, (x1, y1, x2, y2) in zones.items():
+        if x1 <= x <= x2 and y1 <= y <= y2:
 
-                found = True
-                st.success(f"🟩 Machine sélectionnée : {machine}")
+            found = True
+            st.success(f"🟩 Machine sélectionnée : {machine}")
 
-                st.sidebar.title(f"📋 Activités (zone {machine})")
+            st.sidebar.title(f"📋 Activités (zone {machine})")
 
-                machine_search = str(int(machine))
+            try:
+                # Requête de base : on récupère TOUT
+                query = supabase.table("agenda").select("*")
 
-                try:
-                    query = supabase.table("agenda").select("*")
-                    query = query.ilike("description", f"%{machine_search}%")
+                # 🔍 Recherche uniquement dans description
+                if search:
+                    query = query.ilike("description", f"%{search}%")
 
-                    if search:
-                        query = query.ilike("description", f"%{search}%")
+                data = query.execute().data
 
-                    data = query.execute().data
-
-                except Exception as e:
-                    st.sidebar.error("❌ Erreur Supabase")
-                    st.sidebar.write(e)
-                    break
-
-                if not data:
-                    st.sidebar.warning("Aucune activité trouvée.")
-                else:
-                    for row in data:
-                        st.sidebar.markdown(f"""
-    ### 📝 {row.get('description', '-')}
-
-    📅 {row.get('date', '-')}
-
-    👷 {row.get('technicien', 'Non défini')}
-    """)
-
-                        st.sidebar.markdown("---")
-
+            except Exception as e:
+                st.sidebar.error("❌ Erreur Supabase")
+                st.sidebar.write(e)
                 break
 
-        if not found:
-            st.warning("Aucune machine ici")
-            st.sidebar.write("DEBUG DATA :", data)
+            # =========================
+            # AFFICHAGE
+            # =========================
+            if not data:
+                st.sidebar.warning("Aucune activité trouvée.")
+            else:
+                for row in data:
+                    st.sidebar.markdown(f"""
+### 📝 {row.get('description', '-')}
 
+📅 {row.get('date', '-')}
+
+👷 {row.get('technicien', 'Non défini')}
+""")
+
+                    st.sidebar.markdown("---")
+
+            break
+
+    if not found:
+        st.warning("Aucune machine ici")
