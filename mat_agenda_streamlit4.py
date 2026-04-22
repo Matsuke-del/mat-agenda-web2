@@ -735,11 +735,11 @@ if page == "🏭 Plan Usine":
 
     else:
 
-st.set_page_config(layout="wide")
-st.title("🏭 Plan Usine Interactif")
+        st.set_page_config(layout="wide")
+        st.title("🏭 Plan Usine Interactif")
 
-st.write("Clique sur une machine pour afficher les activités.")
-
+        st.write("Clique sur une machine pour afficher les activités.")
+  
 # =========================
 # POSITIONS DU PLAN (à ajuster)
 # =========================
