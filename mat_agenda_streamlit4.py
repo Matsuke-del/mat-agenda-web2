@@ -737,6 +737,8 @@ if page == "🏭 Plan Usine":
     if not os.path.exists(plan_path):
         st.error(f"❌ Image introuvable : {plan_path}")
     else:
+
+        # On affiche l'image
         st.image(plan_path, use_container_width=True)
 
         # =========================
@@ -765,10 +767,11 @@ if page == "🏭 Plan Usine":
                 top:{y}px;
                 width:{w}px;
                 height:{h}px;
-                background:rgba(0,255,0,0.3);
+                background:rgba(0,255,0,0.25);
                 border:2px solid #00ff00;
                 border-radius:6px;
                 display:block;
+                cursor:pointer;
             "></a>
             """
 
