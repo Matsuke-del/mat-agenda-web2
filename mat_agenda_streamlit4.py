@@ -816,22 +816,48 @@ if click:
             # =========================
             st.sidebar.title(f"📋 Activités pour {machine}")
 
-            # Connexion Supabase
+            # =========================
+            # VÉRIFICATION DES SECRETS
+            # =========================
+            if "supabase_url" not in st.secrets or "supabase_key" not in st.secrets:
+                st.sidebar.error("❌ Les clés Supabase ne sont pas configurées dans Streamlit Cloud.")
+                st.sidebar.info("""
+                Ajoute dans Settings → Secrets :
+
+                supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
+                supabase_key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
+                """)
+                break
+
+            # =========================
+            # CONNEXION SUPABASE
+            # =========================
             from supabase import create_client
-            supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
-            supabase_key = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
+            url = st.secrets["supabase_url"]
+            key = st.secrets["supabase_key"]
             supabase = create_client(url, key)
 
-            # Récupérer les activités contenant le numéro de machine
-            query = (
-                supabase
-                .table("agenda")
-                .select("*")
-                .ilike("description", f"%{machine}%")
-            )
+            # =========================
+            # REQUÊTE : TABLE AGENDA
+            # =========================
+            try:
+                query = (
+                    supabase
+                    .table("agenda")
+                    .select("*")
+                    .ilike("description", f"%{machine}%")
+                )
 
-            data = query.execute().data
+                data = query.execute().data
 
+            except Exception as e:
+                st.sidebar.error("❌ Erreur Supabase (table, colonnes ou RLS).")
+                st.sidebar.write(e)
+                break
+
+            # =========================
+            # AFFICHAGE DES ACTIVITÉS
+            # =========================
             if not data:
                 st.sidebar.warning("Aucune activité trouvée.")
             else:
@@ -842,10 +868,10 @@ if click:
                     👷 {row.get('technicien', 'Non défini')}
                     """)
 
-                    # Affichage des images si présentes
+                    # Affichage image(s)
                     if row.get("image_url"):
+                        import json
                         try:
-                            import json
                             images = json.loads(row["image_url"])
                         except:
                             images = [row["image_url"]]
@@ -860,3 +886,4 @@ if click:
 
     if not found:
         st.warning("Aucune machine ici")
+
