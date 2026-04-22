@@ -444,7 +444,7 @@ def popup_activity(row):
                     st.image(img, use_container_width=True)
 
                     # Bouton compact, icône seule
-                    if st.button("🔍", key=f"zoom_cal_{row['id']}_{i}", help="Agrandir l'image"):
+                    if st.button("🔍", key=f"zoom_cal_{row['id']}_{i}"):
                         st.session_state.zoom_image = img
                         st.session_state.show_zoom = True
                         st.rerun()
