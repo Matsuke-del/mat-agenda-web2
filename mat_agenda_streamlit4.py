@@ -719,11 +719,21 @@ if page == "📊 Statistiques":
         st.subheader("Heures par mois")
 
         st.bar_chart(stats)
-        
+
 if st.session_state.get("show_zoom"):
     popup_zoom_image()
 
-import streamlit as st
+# =========================
+# Plan Usine
+# =========================
+if page == "🏭 Plan Usine":
+
+    st.header("🏭 Plan Usine")
+
+    if df.empty:
+        st.info("Pas de données")
+
+    else:
 
 st.set_page_config(layout="wide")
 st.title("🏭 Plan Usine Interactif")
