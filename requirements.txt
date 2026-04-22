@@ -3,3 +3,4 @@ pandas
 requests
 streamlit-calendar
 supabase
+streamlit-image-coordinates
