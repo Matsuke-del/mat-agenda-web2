@@ -734,16 +734,22 @@ if page == "🏭 Plan Usine":
     st.write("Clique sur une machine pour afficher les activités.")
 
     # =========================
-    # CONNEXION SUPABASE
+    # CONNEXION SUPABASE (UTILISE LES SECRETS)
     # =========================
-    if "supabase_url" not in st.secrets or "supabase_key" not in st.secrets:
-        st.error("❌ Clés Supabase manquantes.")
+    try:
+        url = st.secrets["supabase_url"]
+        key = st.secrets["supabase_key"]
+    except KeyError:
+        st.error("❌ Les clés Supabase ne sont pas configurées dans Streamlit Cloud.")
+        st.info("""
+        Va dans Settings → Secrets et ajoute :
+
+        supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
+        supabase_key = "TA_CLE_ANON_ICI"
+        """)
         st.stop()
 
-    supabase = create_client(
-        "https://quamffmaxqhhtyxworou.supabase.co",
-        "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
-    )
+    supabase = create_client(url, key)
 
     # =========================
     # CHARGER IMAGE
@@ -788,7 +794,7 @@ if page == "🏭 Plan Usine":
         "49": (889,242,935,291),
         "53": (584,488,771,610),
         "101": (373,314,530,693),
-        "102": (1104,126,1404,272),  # 🔥 corrigé
+        "102": (1104,126,1404,272),
         "103": (584,311,682,413),
         "104": (584,83,788,180),
         "105": (726,435,881,553),
@@ -811,7 +817,7 @@ if page == "🏭 Plan Usine":
     )
 
     # =========================
-    # RECHERCHE (comme liste)
+    # RECHERCHE
     # =========================
     search = st.sidebar.text_input("🔍 Recherche activité")
 
@@ -832,16 +838,12 @@ if page == "🏭 Plan Usine":
 
                 st.sidebar.title(f"📋 Activités (zone {machine})")
 
-                # 🔥 conversion pour éviter "01" vs "1"
                 machine_search = str(int(machine))
 
                 try:
                     query = supabase.table("agenda").select("*")
-
-                    # 🔥 filtre par machine (mot clé dans description)
                     query = query.ilike("description", f"%{machine_search}%")
 
-                    # 🔍 filtre recherche utilisateur
                     if search:
                         query = query.ilike("description", f"%{search}%")
 
@@ -852,16 +854,11 @@ if page == "🏭 Plan Usine":
                     st.sidebar.write(e)
                     break
 
-                # =========================
-                # AFFICHAGE
-                # =========================
                 if not data:
                     st.sidebar.warning("Aucune activité trouvée.")
                 else:
                     for row in data:
-                        with st.sidebar.container():
-
-                            st.markdown(f"""
+                        st.sidebar.markdown(f"""
 ### 📝 {row.get('description', '-')}
 
 📅 {row.get('date', '-')}
@@ -871,11 +868,10 @@ if page == "🏭 Plan Usine":
 👷 {row.get('technicien', 'Non défini')}
 """)
 
-                            # IMAGE
-                            if row.get("image_url"):
-                                st.image(row["image_url"], use_container_width=True)
+                        if row.get("image_url"):
+                            st.sidebar.image(row["image_url"], use_container_width=True)
 
-                            st.markdown("---")
+                        st.sidebar.markdown("---")
 
                 break
 
