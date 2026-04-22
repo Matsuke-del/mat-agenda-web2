@@ -284,6 +284,22 @@ page = st.sidebar.radio(
 if st.button("📝 Tâches à prévoir"):
     popup_tasks()
 
+if "reset_sidebar" not in st.session_state:
+    st.session_state.reset_sidebar = False
+
+# =========================
+# RESET AVANT AFFICHAGE (IMPORTANT)
+# =========================
+if st.session_state.reset_sidebar:
+    st.session_state.sidebar_date = datetime.today()
+    st.session_state.sidebar_debut = time(8, 0)
+    st.session_state.sidebar_fin = time(9, 0)
+    st.session_state.sidebar_description = ""
+    st.session_state.sidebar_color = "#00ff9c"
+    st.session_state.sidebar_images_upload = None
+    # on garde le technicien (plus pratique)
+
+    st.session_state.reset_sidebar = False
 # =========================
 # AJOUT ACTIVITE
 # =========================
@@ -359,22 +375,13 @@ if st.sidebar.button("Ajouter activité"):
         tech_selected
     )
 
-# =========================
-# RESET AUTO
-# =========================
-from datetime import datetime, time
+        # =========================
+        # RESET PROPRE
+        # =========================
+        st.session_state.reset_sidebar = True
 
-st.session_state.sidebar_date = datetime.today()
-st.session_state.sidebar_debut = time(8, 0)
-st.session_state.sidebar_fin = time(9, 0)
-st.session_state.sidebar_description = ""
-st.session_state.sidebar_color = "#00ff9c"
-st.session_state.sidebar_images_upload = None
-# optionnel : garder technicien ou reset
-# st.session_state.sidebar_technicien = "MAT"
-
-st.success("Activité ajoutée ✅")
-st.rerun()
+        st.success("Activité ajoutée ✅")
+        st.rerun()
 
 # =========================
 # TRI
