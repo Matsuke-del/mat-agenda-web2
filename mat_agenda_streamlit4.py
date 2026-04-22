@@ -720,69 +720,67 @@ if page == "📊 Statistiques":
 
         st.bar_chart(stats)
 
-if st.session_state.get("show_zoom"):
-    popup_zoom_image()
 # =========================
 # Plan Usine
 # =========================
-
 if page == "🏭 Plan Usine":
 
     st.header("🏭 Plan Usine")
     st.write("Clique sur une machine pour afficher les activités.")
 
-# =========================
-# 1. Charger l'image du plan
-# =========================
-plan_path = "Plan_usine.png"   # mets ton vrai chemin ici
-st.image(plan_path, use_container_width=True)
+    # =========================
+    # 1. Charger l'image du plan
+    # =========================
+    plan_path = "Plan_usine.png"   # mets ton vrai chemin ici
 
-# =========================
-# 2. Définir les zones cliquables
-# =========================
-# Format : machine : (x, y, width, height)
-zones = {
-    "101.A": (50, 80, 80, 80),
-    "111.A": (180, 80, 80, 80),
-    "117": (350, 200, 80, 80),
-    "105": (450, 200, 80, 80),
-    # ajoute les autres ici…
-}
+    import os
+    if not os.path.exists(plan_path):
+        st.error(f"❌ Image introuvable : {plan_path}")
+    else:
+        st.image(plan_path, use_container_width=True)
 
-# =========================
-# 3. Superposition HTML
-# =========================
-html = """
-<div style='position:relative; width:100%;'>
-    <img src='{}' style='width:100%;'>
-""".format(plan_path)
+        # =========================
+        # 2. Définir les zones cliquables
+        # =========================
+        zones = {
+            "101.A": (50, 80, 80, 80),
+            "111.A": (180, 80, 80, 80),
+            "117": (350, 200, 80, 80),
+            "105": (450, 200, 80, 80),
+        }
 
-for machine, (x, y, w, h) in zones.items():
-    html += f"""
-    <button onclick="window.location.href='?machine={machine}'"
-        style="
-            position:absolute;
-            left:{x}px;
-            top:{y}px;
-            width:{w}px;
-            height:{h}px;
-            background:rgba(0,255,0,0.3);   /* vert transparent */
-            border:2px solid #00ff00;
-            border-radius:6px;
-            cursor:pointer;
-        ">
-    </button>
-    """
+        # =========================
+        # 3. Superposition HTML
+        # =========================
+        html = f"""
+        <div style='position:relative; width:100%;'>
+            <img src='{plan_path}' style='width:100%;'>
+        """
 
-html += "</div>"
+        for machine, (x, y, w, h) in zones.items():
+            html += f"""
+            <a href='?machine={machine}' style="
+                position:absolute;
+                left:{x}px;
+                top:{y}px;
+                width:{w}px;
+                height:{h}px;
+                background:rgba(0,255,0,0.3);
+                border:2px solid #00ff00;
+                border-radius:6px;
+                display:block;
+            "></a>
+            """
 
-st.markdown(html, unsafe_allow_html=True)
+        html += "</div>"
 
-# =========================
-# 4. Popup activité
-# =========================
-machine = st.query_params.get("machine", None)
+        st.markdown(html, unsafe_allow_html=True)
 
-if machine:
-    st.subheader(f"📋 Activités pour {machine}")
-    st.write("Ici tu affiches les activités Supabase…")
+        # =========================
+        # 4. Popup activité
+        # =========================
+        machine = st.query_params.get("machine", None)
+
+        if machine:
+            st.subheader(f"📋 Activités pour {machine}")
+            st.write("Ici tu affiches les activités Supabase…")
