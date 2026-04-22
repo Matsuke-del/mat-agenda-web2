@@ -389,25 +389,9 @@ if not df.empty:
 if "zoom_image" not in st.session_state:
     st.session_state.zoom_image = None
 
+if "show_zoom" not in st.session_state:
+    st.session_state.show_zoom = False
 
-# =========================
-# POPUP IMAGE
-# =========================
-@st.dialog("🖼️ Image agrandie")
-def image_popup():
-    if st.session_state.zoom_image:
-        st.image(st.session_state.zoom_image, use_container_width=True)
-
-        if st.button("❌ Fermer"):
-            st.session_state.zoom_image = None
-            st.rerun()
-
-
-# =========================
-# OUVERTURE CONDITIONNELLE
-# =========================
-if st.session_state.zoom_image:
-    image_popup()
 # =========================
 # 🖼️ POPUP ZOOM IMAGE
 # =========================
