@@ -745,7 +745,7 @@ if page == "🏭 Plan Usine":
         Va dans Settings → Secrets et ajoute :
 
         supabase_url = "https://quamffmaxqhhtyxworou.supabase.co"
-        supabase_key = "TA_CLE_ANON_ICI"
+        supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1YW1mZm1heHFoaHR5eHdvcm91Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzNzM4MjUsImV4cCI6MjA5MDk0OTgyNX0.aO5mv0jaOzFrj_yd8JtXDBrff0mwzsdPZpei_i3C_BM"
         """)
         st.stop()
 
