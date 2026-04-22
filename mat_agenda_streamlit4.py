@@ -296,8 +296,11 @@ import json
 if "reset_sidebar" not in st.session_state:
     st.session_state.reset_sidebar = False
 
+if "upload_key" not in st.session_state:
+    st.session_state.upload_key = 0
+
 # =========================
-# RESET AVANT AFFICHAGE (IMPORTANT)
+# RESET AVANT WIDGETS (OBLIGATOIRE)
 # =========================
 if st.session_state.reset_sidebar:
     st.session_state.sidebar_date = datetime.today()
@@ -305,21 +308,22 @@ if st.session_state.reset_sidebar:
     st.session_state.sidebar_fin = time(9, 0)
     st.session_state.sidebar_description = ""
     st.session_state.sidebar_color = "#00ff9c"
-    st.session_state.sidebar_images_upload = None
-    # on garde le technicien (plus pratique)
+    # ⚠️ pas de reset direct file_uploader ici
 
     st.session_state.reset_sidebar = False
 
 # =========================
-# AJOUT ACTIVITE
+# SIDEBAR FORM
 # =========================
 st.sidebar.header("➕ Ajouter activité")
 
-# Liste des techniciens
 techniciens = ["MAT", "Sébastien"]
 
-# Choix du technicien pour l'activité
-tech_selected = st.sidebar.selectbox("🛠 Technicien", techniciens)
+tech_selected = st.sidebar.selectbox(
+    "🛠 Technicien",
+    techniciens,
+    key="sidebar_technicien"
+)
 
 date = st.sidebar.date_input(
     "📅 Date",
@@ -332,67 +336,73 @@ fin = st.sidebar.time_input("Fin", key="sidebar_fin")
 desc = st.sidebar.text_area("Description", key="sidebar_description")
 color = st.sidebar.color_picker("Couleur", "#00ff9c", key="sidebar_color")
 
+# 🔥 FILE UPLOADER CORRIGÉ (clé dynamique)
 images = st.sidebar.file_uploader(
-    "Images activité (plusieurs possibles)",
-    type=["png","jpg","jpeg"],
+    "Images activité",
+    type=["png", "jpg", "jpeg"],
     accept_multiple_files=True,
-    key="sidebar_images_upload"
+    key=f"sidebar_images_upload_{st.session_state.upload_key}"
 )
 
-image_urls = []
-if images:
-    for image in images:
-        try:
-            file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
-            supabase.storage.from_("agenda-images").upload(file_name, image.getvalue())
-            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
-            image_urls.append(url)
-        except Exception as e:
-            st.error(f"Erreur upload {image.name}: {e}")
-
+# =========================
+# BOUTON AJOUT
+# =========================
 if st.sidebar.button("Ajouter activité"):
 
-    image_urls = []
+    if not desc:
+        st.sidebar.warning("Description obligatoire")
 
-    if images:
-        for image in images:
-            file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
+    else:
+        image_urls = []
 
-            supabase.storage.from_("agenda-images").upload(
-                file_name,
-                image.getvalue()
-            )
+        if images:
+            for image in images:
+                try:
+                    file_name = f"{int(datetime.now().timestamp()*1000)}_{image.name}"
 
-            url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+                    supabase.storage.from_("agenda-images").upload(
+                        file_name,
+                        image.getvalue()
+                    )
 
-            image_urls.append(url)
+                    url = supabase.storage.from_("agenda-images").get_public_url(file_name)
+                    image_urls.append(url)
 
-    supabase.table("agenda").insert({
-        "date": date.isoformat(),
-        "debut": debut.strftime("%H:%M:%S"),
-        "fin": fin.strftime("%H:%M:%S"),
-        "description": desc,
-        "color": color,
-        "technicien": tech_selected,
-        "image_url": json.dumps(image_urls)
-    }).execute()
+                except Exception as e:
+                    st.error(f"Erreur upload {image.name}: {e}")
 
-    send_push(
-        desc,
-        date.strftime("%d/%m/%Y"),
-        debut.strftime("%H:%M"),
-        fin.strftime("%H:%M"),
-        tech_selected
-    )
+        # =========================
+        # INSERT DB
+        # =========================
+        supabase.table("agenda").insert({
+            "date": date.isoformat(),
+            "debut": debut.strftime("%H:%M:%S"),
+            "fin": fin.strftime("%H:%M:%S"),
+            "description": desc,
+            "color": color,
+            "technicien": tech_selected,
+            "image_url": json.dumps(image_urls)
+        }).execute()
+
+        # =========================
+        # PUSH NOTIFICATION
+        # =========================
+        send_push(
+            desc,
+            date.strftime("%d/%m/%Y"),
+            debut.strftime("%H:%M"),
+            fin.strftime("%H:%M"),
+            tech_selected
+        )
 
         # =========================
         # RESET PROPRE
-        # ========================
-    st.session_state.reset_sidebar = True
+        # =========================
+        st.session_state.reset_sidebar = True
+        st.session_state.upload_key += 1  # 🔥 reset uploader
 
-    st.success("Activité ajoutée ✅")
-    st.rerun()
-
+        st.success("Activité ajoutée ✅")
+        st.rerun()
 # =========================
 # TRI
 # =========================
