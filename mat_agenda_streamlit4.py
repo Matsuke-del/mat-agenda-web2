@@ -723,8 +723,6 @@ if page == "📊 Statistiques":
 if st.session_state.get("show_zoom"):
     popup_zoom_image()
 
-/pages/4_Plan_Usine.py
-
 import streamlit as st
 
 st.set_page_config(layout="wide")
