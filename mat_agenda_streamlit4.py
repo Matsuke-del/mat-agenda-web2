@@ -849,9 +849,11 @@ if page == "🏭 Plan Usine":
                         st.sidebar.markdown(f"""
                         ### 📝 {row['description']}
                         📅 {row['date']}
+                        ⏰ {row['debut']} → {row['fin']}
                         👷 {row.get('technicien', 'Non défini')}
                         """)
 
+                        # Affichage image(s)
                         if row.get("image_url"):
                             st.sidebar.image(row["image_url"], use_container_width=True)
 
@@ -861,4 +863,3 @@ if page == "🏭 Plan Usine":
 
         if not found:
             st.warning("Aucune machine ici")
-
