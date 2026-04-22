@@ -829,12 +829,12 @@ if click:
         if x1 <= x <= x2 and y1 <= y <= y2:
 
             found = True
-            st.success(f"🟩 Machine sélectionnée : {machine}")
+            st.success(f"🟩 Zone sélectionnée : {machine}")
 
             st.sidebar.title(f"📋 Activités (zone {machine})")
 
             try:
-                # 1️⃣ Requête de base : filtre machine dans description
+                # 1️⃣ Filtre automatique par zone cliquée
                 query = supabase.table("agenda").select("*")
                 query = query.ilike("description", f"%{machine}%")
 
@@ -850,21 +850,44 @@ if click:
                 break
 
             # =========================
-            # AFFICHAGE
+            # AFFICHAGE IDENTIQUE À TA PAGE LISTE
             # =========================
             if not data:
-                st.sidebar.warning("Aucune activité trouvée.")
+                st.info("Aucune activité trouvée")
             else:
                 for row in data:
-                    st.sidebar.markdown(f"""
-### 📝 {row.get('description', '-')}
 
-📅 {row.get('date', '-')}
+                    col1, col2, col3 = st.columns([6, 1, 1])
 
-👷 {row.get('technicien', 'Non défini')}
-""")
+                    # --- Colonne principale ---
+                    with col1:
+                        st.subheader("📄 Description")
+                        st.code(row.get("description", "-"))
 
-                    st.sidebar.markdown("---")
+                        st.write(f"📅 {row.get('date', '-')}")
+                        st.write(f"⏰ {row.get('debut', '-')} → {row.get('fin', '-')}")
+                        st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
+
+                        # Bouton fermer
+                        if st.button("Fermer", key=f"close{row['id']}"):
+                            st.rerun()
+
+                    # --- Colonne modifier ---
+                    with col2:
+                        if st.button("✏", key=f"edit{row['id']}"):
+                            st.session_state["edit_id"] = row["id"]
+                            st.session_state["edit_desc"] = row["description"]
+                            st.session_state["edit_date"] = row["date"]
+                            st.session_state["edit_debut"] = row["debut"]
+                            st.session_state["edit_fin"] = row["fin"]
+                            st.session_state["edit_images"] = row.get("image_url", "[]")
+                            st.stop()
+
+                    # --- Colonne supprimer ---
+                    with col3:
+                        if st.button("❌", key=f"del{row['id']}"):
+                            supabase.table("agenda").delete().eq("id", row["id"]).execute()
+                            st.rerun()
 
             break
 
