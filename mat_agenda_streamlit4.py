@@ -844,4 +844,3 @@ if machine:
         st.write(f"• {act}")
 else:
     st.info("Clique sur une machine dans le plan pour afficher les activités.")
-
