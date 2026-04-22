@@ -377,11 +377,11 @@ if st.sidebar.button("Ajouter activité"):
 
         # =========================
         # RESET PROPRE
-        # =========================
-        st.session_state.reset_sidebar = True
+        # ========================
+st.session_state.reset_sidebar = True
 
-        st.success("Activité ajoutée ✅")
-        st.rerun()
+st.success("Activité ajoutée ✅")
+st.rerun()
 
 # =========================
 # TRI
