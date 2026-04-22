@@ -278,7 +278,7 @@ if "edit_id" in st.session_state:
     
 page = st.sidebar.radio(
     "Navigation",
-    ["📅 Calendrier", "📂 Liste", "📊 Statistiques"]
+    ["📅 Calendrier", "📂 Liste", "📊 Statistiques", "🏭 Plan Usine"]
 )
 
 if st.button("📝 Tâches à prévoir"):
@@ -723,23 +723,24 @@ if page == "📊 Statistiques":
 if st.session_state.get("show_zoom"):
     popup_zoom_image()
 
+/pages/4_Plan_Usine.py
+
 import streamlit as st
 
 st.set_page_config(layout="wide")
+st.title("🏭 Plan Usine Interactif")
 
-st.title("🧭 Supervision Usine – Interface Interactive")
+st.write("Clique sur une machine pour afficher les activités.")
 
-# ---------------------------------------------------------
-# 1. Positions exactes des machines (à remplir)
-# ---------------------------------------------------------
+# =========================
+# POSITIONS DU PLAN (à ajuster)
+# =========================
 positions = {
-    # STOCKAGE GRANDE SALLE
     "101.A": (20, 20),
     "111.A": (120, 20),
     "102.A": (20, 120),
     "15.A": (120, 120),
 
-    # PATISSERIE
     "117": (300, 20),
     "105": (400, 20),
     "105.A": (500, 20),
@@ -748,7 +749,6 @@ positions = {
     "25": (500, 120),
     "104": (600, 120),
 
-    # VIENNOISERIE
     "112": (300, 250),
     "108": (400, 250),
     "103": (500, 250),
@@ -762,7 +762,6 @@ positions = {
     "119": (500, 450),
     "115": (600, 450),
 
-    # MECATHERM
     "101": (300, 580),
     "21": (400, 580),
     "120": (500, 580),
@@ -770,7 +769,6 @@ positions = {
     "23": (700, 580),
     "118": (800, 580),
 
-    # ATELIER PAIN FRAIS
     "24": (900, 250),
     "26": (900, 350),
     "22": (900, 450),
@@ -778,69 +776,60 @@ positions = {
     "27": (900, 650),
 }
 
-# ---------------------------------------------------------
-# 2. États des machines (vert / gris)
-# ---------------------------------------------------------
+# =========================
+# ÉTATS DES MACHINES
+# =========================
 status = {machine: "Auto" for machine in positions}
 
 colors = {
-    "Auto": "#2ecc71",   # vert
-    "Arrêt": "#7f8c8d"   # gris
+    "Auto": "#2ecc71",
+    "Arrêt": "#7f8c8d"
 }
 
-# ---------------------------------------------------------
-# 3. Activités (exemple)
-# ---------------------------------------------------------
+# =========================
+# ACTIVITÉS (exemple)
+# =========================
 activities = {
     machine: [f"Activité exemple pour {machine}"]
     for machine in positions
 }
 
-# ---------------------------------------------------------
-# 4. Sidebar : affichage du plan usine
-# ---------------------------------------------------------
-with st.sidebar:
-    st.markdown("## 🏭 Plan Usine")
+# =========================
+# AFFICHAGE DU PLAN
+# =========================
+html = """
+<div style='position:relative;width:1200px;height:800px;
+            background:#f0f0f0;border:2px solid #444;'>
+"""
 
-    html = """
-    <div style='position:relative;width:1100px;height:800px;
-                background:#f0f0f0;border:2px solid #444;
-                overflow:hidden;'>
+for machine, (x, y) in positions.items():
+    color = colors[status[machine]]
+    html += f"""
+    <button onclick="window.location.href='?machine={machine}'"
+        style="
+            position:absolute;
+            left:{x}px;
+            top:{y}px;
+            width:70px;
+            height:70px;
+            background:{color};
+            border:none;
+            border-radius:6px;
+            color:white;
+            font-weight:bold;
+            cursor:pointer;
+        ">
+        {machine}
+    </button>
     """
 
-    for machine, (x, y) in positions.items():
-        color = colors[status[machine]]
-        html += f"""
-        <button onclick="window.location.href='?machine={machine}'"
-            style="
-                position:absolute;
-                left:{x}px;
-                top:{y}px;
-                width:70px;
-                height:70px;
-                background:{color};
-                border:none;
-                border-radius:6px;
-                color:white;
-                font-weight:bold;
-                cursor:pointer;
-            ">
-            {machine}
-        </button>
-        """
+html += "</div>"
 
-    html += "</div>"
+st.markdown(html, unsafe_allow_html=True)
 
-    st.markdown(html, unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# 5. Zone centrale : affichage des activités
-# ---------------------------------------------------------
 machine = st.query_params.get("machine", None)
 
 if machine:
-    st.subheader(f"📋 Activités pour la machine **{machine}**")
+    st.subheader(f"📋 Activités pour {machine}")
     for act in activities[machine]:
         st.write(f"• {act}")
-else:
-    st.info("Clique sur une machine dans le plan pour afficher les activités.")
