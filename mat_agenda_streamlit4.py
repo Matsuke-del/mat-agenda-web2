@@ -360,6 +360,23 @@ if st.sidebar.button("Ajouter activité"):
     )
 
 # =========================
+# RESET AUTO
+# =========================
+from datetime import datetime, time
+
+st.session_state.sidebar_date = datetime.today()
+st.session_state.sidebar_debut = time(8, 0)
+st.session_state.sidebar_fin = time(9, 0)
+st.session_state.sidebar_description = ""
+st.session_state.sidebar_color = "#00ff9c"
+st.session_state.sidebar_images_upload = None
+# optionnel : garder technicien ou reset
+# st.session_state.sidebar_technicien = "MAT"
+
+st.success("Activité ajoutée ✅")
+st.rerun()
+
+# =========================
 # TRI
 # =========================
 if not df.empty:
