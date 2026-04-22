@@ -741,7 +741,7 @@ if page == "🏭 Plan Usine":
     }
 
     # Afficher l'image cliquable
-    click = streamlit_image_coordinates(image, key="plan")
+    click = streamlit_image_coordinates(image, key="plan", width=image.width)
 
     if click:
         x, y = click["x"], click["y"]
