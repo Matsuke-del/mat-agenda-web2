@@ -803,24 +803,27 @@ if page == "🏭 Plan Usine":
         "117": (663,680,791,766),
     }
 
-    # =========================
-    # IMAGE CLIQUABLE
-    # =========================
+# =========================
+# IMAGE CLIQUABLE
+# =========================
+click = None  # 🔒 Sécurité : click existe toujours
+
+try:
     click = streamlit_image_coordinates(
         image,
         key="plan",
         width=image.width
     )
+except Exception as e:
+    st.error("❌ Erreur lors du chargement de l'image cliquable")
+    st.write(e)
+    click = None  # 🔒 On garde click défini
 
-    # =========================
-    # RECHERCHE
-    # =========================
-    search = st.sidebar.text_input("🔍 Recherche activité")
 
 # =========================
 # DETECTION CLIC
 # =========================
-if click:
+if click is not None:
     x, y = click["x"], click["y"]
     st.write(f"📍 Position cliquée : {x}, {y}")
 
@@ -834,14 +837,13 @@ if click:
 
             st.sidebar.title(f"📋 Activités (zone {machine})")
 
-            try:
-                # 1️⃣ On cherche UNIQUEMENT "zone XX"
-                zone_text = f"zone {machine}"
+            # 🔍 Recherche EXACTE : "zone 07"
+            zone_text = f"zone {machine}"
 
+            try:
                 query = supabase.table("agenda").select("*")
                 query = query.ilike("description", f"%{zone_text}%")
 
-                # 2️⃣ Filtre recherche utilisateur (optionnel)
                 if search:
                     query = query.ilike("description", f"%{search}%")
 
@@ -862,7 +864,6 @@ if click:
 
                     col1, col2, col3 = st.columns([6, 1, 1])
 
-                    # --- Colonne principale ---
                     with col1:
                         st.subheader("📄 Description")
                         st.code(row.get("description", "-"))
@@ -873,7 +874,6 @@ if click:
                         if st.button("Fermer", key=f"close{row['id']}"):
                             st.rerun()
 
-                    # --- Colonne modifier ---
                     with col2:
                         if st.button("✏", key=f"edit{row['id']}"):
                             st.session_state["edit_id"] = row["id"]
@@ -882,7 +882,6 @@ if click:
                             st.session_state["edit_technicien"] = row.get("technicien", "")
                             st.stop()
 
-                    # --- Colonne supprimer ---
                     with col3:
                         if st.button("❌", key=f"del{row['id']}"):
                             supabase.table("agenda").delete().eq("id", row["id"]).execute()
@@ -892,4 +891,7 @@ if click:
 
     if not found:
         st.warning("Aucune machine ici")
+
+else:
+    st.info("Clique sur le plan pour afficher les activités.")
 
