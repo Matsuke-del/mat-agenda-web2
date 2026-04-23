@@ -824,85 +824,77 @@ if page == "🏭 Plan Usine":
         st.write(e)
         click = None
 
-    # =========================
-    # DETECTION CLIC
-    # =========================
-    if click:
-        x, y = click["x"], click["y"]
-        st.write(f"📍 Position cliquée : {x}, {y}")
+# =========================
+# DETECTION CLIC
+# =========================
+if click:
+    x, y = click["x"], click["y"]
+    st.write(f"📍 Position cliquée : {x}, {y}")
 
-        found = False
+    found = False
 
-        for machine, (x1, y1, x2, y2) in zones.items():
-            if x1 <= x <= x2 and y1 <= y <= y2:
+    for machine, (x1, y1, x2, y2) in zones.items():
+        if x1 <= x <= x2 and y1 <= y <= y2:
 
-                found = True
-                st.success(f"🟩 Zone sélectionnée : {machine}")
+            found = True
+            st.success(f"🟩 Zone sélectionnée : {machine}")
 
-                st.sidebar.title(f"📋 Activités (zone {machine})")
+            st.sidebar.title(f"📋 Activités (zone {machine})")
 
-                try:
-                    # 1️⃣ On cherche UNIQUEMENT "zone XX"
-                    zone_text = machine  # "07", "101", etc.
+            try:
+                # 1️⃣ Filtre automatique par zone cliquée
+                query = supabase.table("agenda").select("*")
+                query = query.ilike("description", f"%{machine}%")
 
-                    query = supabase.table("agenda").select("*").or_(
-                        f"description.ilike.%zone {zone_text}%,"      # "zone 07"
-                        f"description.ilike.%Zone {zone_text}%,"      # "Zone 07"
-                        f"description.ilike.%ZONE {zone_text}%,"      # "ZONE 07"
-                        f"description.ilike.%zone{zone_text}%,"       # "zone07"
-                        f"description.ilike.%Zone{zone_text}%,"       # "Zone07"
-                        f"description.ilike.%ZONE{zone_text}%"        # "ZONE07"
-                    )
+                # 2️⃣ Filtre recherche utilisateur (optionnel)
+                if search:
+                    query = query.ilike("description", f"%{search}%")
 
+                data = query.execute().data
 
-                    # 2️⃣ Filtre recherche utilisateur (optionnel)
-                    if search:
-                        query = query.ilike("description", f"%{search}%")
-
-                    data = query.execute().data
-
-                except Exception as e:
-                    st.sidebar.error("❌ Erreur Supabase")
-                    st.sidebar.write(e)
-                    break
-
-                # =========================
-                # AFFICHAGE
-                # =========================
-                if not data:
-                    st.info("Aucune activité trouvée")
-                else:
-                    for row in data:
-
-                        col1, col2, col3 = st.columns([6, 1, 1])
-
-                        # --- Colonne principale ---
-                        with col1:
-                            st.subheader("📄 Description")
-                            st.code(row.get("description", "-"))
-
-                            st.write(f"📅 {format_date_fr(row.get('date', '-'))}")
-                            st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
-
-                            if st.button("Fermer", key=f"close{row['id']}"):
-                                st.rerun()
-
-                         # --- Colonne modifier ---
-                        with col2:
-                            if st.button("✏", key=f"edit{row['id']}"):
-                                st.session_state["edit_id"] = row["id"]
-                                st.session_state["edit_desc"] = row["description"]
-                                st.session_state["edit_date"] = row["date"]
-                                st.session_state["edit_technicien"] = row.get("technicien", "")
-                                st.stop()
-
-                        # --- Colonne supprimer ---
-                        with col3:
-                            if st.button("❌", key=f"del{row['id']}"):
-                                supabase.table("agenda").delete().eq("id", row["id"]).execute()
-                                st.rerun()
-
+            except Exception as e:
+                st.sidebar.error("❌ Erreur Supabase")
+                st.sidebar.write(e)
                 break
 
-        if not found:
-            st.warning("Aucune machine ici")
+            # =========================
+            # AFFICHAGE SANS DÉBUT / FIN
+            # =========================
+            if not data:
+                st.info("Aucune activité trouvée")
+            else:
+                for row in data:
+
+                    col1, col2, col3 = st.columns([6, 1, 1])
+
+                    # --- Colonne principale ---
+                    with col1:
+                        st.subheader("📄 Description")
+                        st.code(row.get("description", "-"))
+
+                        st.write(f"📅 {row.get('date', '-')}")
+                        st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
+
+                        # Bouton fermer
+                        if st.button("Fermer", key=f"close{row['id']}"):
+                            st.rerun()
+
+                    # --- Colonne modifier ---
+                    with col2:
+                        if st.button("✏", key=f"edit{row['id']}"):
+                            st.session_state["edit_id"] = row["id"]
+                            st.session_state["edit_desc"] = row["description"]
+                            st.session_state["edit_date"] = row["date"]
+                            st.session_state["edit_technicien"] = row.get("technicien", "")
+                            st.stop()
+
+                    # --- Colonne supprimer ---
+                    with col3:
+                        if st.button("❌", key=f"del{row['id']}"):
+                            supabase.table("agenda").delete().eq("id", row["id"]).execute()
+                            st.rerun()
+
+            break
+
+    if not found:
+        st.warning("Aucune machine ici")
