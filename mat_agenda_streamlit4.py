@@ -827,7 +827,7 @@ if page == "🏭 Plan Usine":
     # =========================
     # DETECTION CLIC
     # =========================
-    if click is not None:
+    if click:
         x, y = click["x"], click["y"]
         st.write(f"📍 Position cliquée : {x}, {y}")
 
@@ -841,13 +841,14 @@ if page == "🏭 Plan Usine":
 
                 st.sidebar.title(f"📋 Activités (zone {machine})")
 
-                # 🔍 Recherche EXACTE : "zone 07"
-                zone_text = f"zone {machine}"
-
                 try:
+                    # 1️⃣ On cherche UNIQUEMENT "zone XX"
+                    zone_text = f"zone {machine}"
+
                     query = supabase.table("agenda").select("*")
                     query = query.ilike("description", f"%{zone_text}%")
 
+                    # 2️⃣ Filtre recherche utilisateur (optionnel)
                     if search:
                         query = query.ilike("description", f"%{search}%")
 
@@ -868,6 +869,7 @@ if page == "🏭 Plan Usine":
 
                         col1, col2, col3 = st.columns([6, 1, 1])
 
+                        # --- Colonne principale ---
                         with col1:
                             st.subheader("📄 Description")
                             st.code(row.get("description", "-"))
@@ -878,6 +880,7 @@ if page == "🏭 Plan Usine":
                             if st.button("Fermer", key=f"close{row['id']}"):
                                 st.rerun()
 
+                         # --- Colonne modifier ---
                         with col2:
                             if st.button("✏", key=f"edit{row['id']}"):
                                 st.session_state["edit_id"] = row["id"]
@@ -886,6 +889,7 @@ if page == "🏭 Plan Usine":
                                 st.session_state["edit_technicien"] = row.get("technicien", "")
                                 st.stop()
 
+                        # --- Colonne supprimer ---
                         with col3:
                             if st.button("❌", key=f"del{row['id']}"):
                                 supabase.table("agenda").delete().eq("id", row["id"]).execute()
@@ -895,6 +899,3 @@ if page == "🏭 Plan Usine":
 
         if not found:
             st.warning("Aucune machine ici")
-
-    else:
-        st.info("Clique sur le plan pour afficher les activités.")
