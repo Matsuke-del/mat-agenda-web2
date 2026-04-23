@@ -720,7 +720,7 @@ if page == "📊 Statistiques":
 
         st.bar_chart(stats)
 
- import streamlit as st
+import streamlit as st
 from PIL import Image
 from streamlit_image_coordinates import streamlit_image_coordinates
 from supabase import create_client
