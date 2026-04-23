@@ -843,10 +843,17 @@ if page == "🏭 Plan Usine":
 
                 try:
                     # 1️⃣ On cherche UNIQUEMENT "zone XX"
-                    zone_text = f"zone {machine}"
+                    zone_text = machine  # "07", "101", etc.
 
-                    query = supabase.table("agenda").select("*")
-                    query = query.ilike("description", f"%{zone_text}%")
+                    query = supabase.table("agenda").select("*").or_(
+                        f"description.ilike.%zone {zone_text}%,"      # "zone 07"
+                        f"description.ilike.%Zone {zone_text}%,"      # "Zone 07"
+                        f"description.ilike.%ZONE {zone_text}%,"      # "ZONE 07"
+                        f"description.ilike.%zone{zone_text}%,"       # "zone07"
+                        f"description.ilike.%Zone{zone_text}%,"       # "Zone07"
+                        f"description.ilike.%ZONE{zone_text}%"        # "ZONE07"
+                    )
+
 
                     # 2️⃣ Filtre recherche utilisateur (optionnel)
                     if search:
