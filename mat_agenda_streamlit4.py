@@ -720,11 +720,19 @@ if page == "📊 Statistiques":
 
         st.bar_chart(stats)
 
-import streamlit as st
+ import streamlit as st
 from PIL import Image
 from streamlit_image_coordinates import streamlit_image_coordinates
 from supabase import create_client
 from datetime import datetime
+
+def format_date_fr(date_str):
+    try:
+        # Format Supabase : "2026-04-08"
+        d = datetime.strptime(date_str, "%Y-%m-%d")
+        return d.strftime("%d/%m/%Y")
+    except:
+        return date_str  # si déjà formatée ou invalide
 
 # =========================
 # PAGE PLAN USINE
@@ -750,12 +758,7 @@ if page == "🏭 Plan Usine":
     # =========================
     # CHARGER IMAGE
     # =========================
-    try:
-        image = Image.open("Plan_usine.png")
-    except Exception as e:
-        st.error("❌ Impossible de charger l'image Plan_usine.png")
-        st.write(e)
-        st.stop()
+    image = Image.open("Plan_usine.png")
 
     # =========================
     # ZONES CLIQUABLES
@@ -811,75 +814,73 @@ if page == "🏭 Plan Usine":
     # =========================
     # IMAGE CLIQUABLE
     # =========================
-    click = None  # sécurité
-
-    try:
-        click = streamlit_image_coordinates(
-            image,
-            key="plan",
-            width=image.width
-        )
-    except Exception as e:
-        st.error("❌ Erreur lors du chargement de l'image cliquable")
-        st.write(e)
-        click = None
+    click = streamlit_image_coordinates(
+        image,
+        key="plan",
+        width=image.width
+    )
 
     # =========================
-    # DETECTION CLIC
+    # RECHERCHE
     # =========================
+    search = st.sidebar.text_input("🔍 Recherche activité")
+
+# =========================
+# DETECTION CLIC
+# =========================
     if click:
         x, y = click["x"], click["y"]
         st.write(f"📍 Position cliquée : {x}, {y}")
-    
+
         found = False
-    
+
         for machine, (x1, y1, x2, y2) in zones.items():
             if x1 <= x <= x2 and y1 <= y <= y2:
-    
+
                 found = True
                 st.success(f"🟩 Zone sélectionnée : {machine}")
-    
+
                 st.sidebar.title(f"📋 Activités (zone {machine})")
-    
+
                 try:
-                    # 1️⃣ Filtre automatique par zone cliquée
+                # 1️⃣ Filtre automatique par zone cliquée
                     query = supabase.table("agenda").select("*")
                     query = query.ilike("description", f"%{machine}%")
-    
-                    # 2️⃣ Filtre recherche utilisateur (optionnel)
+
+                # 2️⃣ Filtre recherche utilisateur (optionnel)
                     if search:
                         query = query.ilike("description", f"%{search}%")
-    
+
                     data = query.execute().data
-    
+
                 except Exception as e:
                     st.sidebar.error("❌ Erreur Supabase")
                     st.sidebar.write(e)
                     break
-    
-                # =========================
-                # AFFICHAGE SANS DÉBUT / FIN
-                # =========================
+
+            # =========================
+            # AFFICHAGE SANS DÉBUT / FIN
+            # =========================
                 if not data:
                     st.info("Aucune activité trouvée")
                 else:
                     for row in data:
-    
+
                         col1, col2, col3 = st.columns([6, 1, 1])
-    
-                        # --- Colonne principale ---
+
+                    # --- Colonne principale ---
                         with col1:
                             st.subheader("📄 Description")
                             st.code(row.get("description", "-"))
-    
+
                             st.write(f"📅 {row.get('date', '-')}")
                             st.write(f"👷 Technicien : {row.get('technicien', 'Non défini')}")
-    
-                            # Bouton fermer
+
+                        # Bouton fermer
                             if st.button("Fermer", key=f"close{row['id']}"):
                                 st.rerun()
-    
-                        # --- Colonne modifier ---
+
+                    # --- Colonne modifier ---
                         with col2:
                             if st.button("✏", key=f"edit{row['id']}"):
                                 st.session_state["edit_id"] = row["id"]
@@ -887,14 +888,14 @@ if page == "🏭 Plan Usine":
                                 st.session_state["edit_date"] = row["date"]
                                 st.session_state["edit_technicien"] = row.get("technicien", "")
                                 st.stop()
-    
-                        # --- Colonne supprimer ---
+
+                    # --- Colonne supprimer ---
                         with col3:
                             if st.button("❌", key=f"del{row['id']}"):
                                 supabase.table("agenda").delete().eq("id", row["id"]).execute()
                                 st.rerun()
-    
+
                 break
-    
+
         if not found:
             st.warning("Aucune machine ici")
