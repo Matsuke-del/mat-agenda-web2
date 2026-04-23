@@ -750,7 +750,12 @@ if page == "🏭 Plan Usine":
     # =========================
     # CHARGER IMAGE
     # =========================
-    image = Image.open("Plan_usine.png")
+    try:
+        image = Image.open("Plan_usine.png")
+    except Exception as e:
+        st.error("❌ Impossible de charger l'image Plan_usine.png")
+        st.write(e)
+        st.stop()
 
     # =========================
     # ZONES CLIQUABLES
