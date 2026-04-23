@@ -811,7 +811,7 @@ if page == "🏭 Plan Usine":
 # =========================
 # IMAGE CLIQUABLE
 # =========================
-click = None  # 🔒 Sécurité : click existe toujours
+click = None  # sécurité
 
 try:
     click = streamlit_image_coordinates(
@@ -822,8 +822,7 @@ try:
 except Exception as e:
     st.error("❌ Erreur lors du chargement de l'image cliquable")
     st.write(e)
-    click = None  # 🔒 On garde click défini
-
+    click = None
 
 # =========================
 # DETECTION CLIC
