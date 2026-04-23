@@ -834,14 +834,14 @@ if click:
 
             st.sidebar.title(f"📋 Activités (zone {machine})")
 
-            machine_num = machine  # ex: "07"
-
             try:
-                # 1️⃣ Récupération brute : toutes les descriptions contenant "07"
-                query = supabase.table("agenda").select("*")
-                query = query.ilike("description", f"%{machine_num}%")
+                # 1️⃣ On cherche UNIQUEMENT "zone XX"
+                zone_text = f"zone {machine}"
 
-                # 2️⃣ Filtre recherche utilisateur
+                query = supabase.table("agenda").select("*")
+                query = query.ilike("description", f"%{zone_text}%")
+
+                # 2️⃣ Filtre recherche utilisateur (optionnel)
                 if search:
                     query = query.ilike("description", f"%{search}%")
 
@@ -853,27 +853,12 @@ if click:
                 break
 
             # =========================
-            # 3️⃣ FILTRAGE PYTHON FIABLE (regex)
-            # =========================
-            import re
-
-            # REGLE :
-            # 07 doit être en début de mot
-            # et NE DOIT PAS être suivi d’un chiffre
-            pattern = re.compile(rf"\b{machine_num}(?!\d)", re.IGNORECASE)
-
-            filtered_data = [
-                row for row in data
-                if pattern.search(row.get("description", ""))
-            ]
-
-            # =========================
             # AFFICHAGE
             # =========================
-            if not filtered_data:
+            if not data:
                 st.info("Aucune activité trouvée")
             else:
-                for row in filtered_data:
+                for row in data:
 
                     col1, col2, col3 = st.columns([6, 1, 1])
 
@@ -907,3 +892,4 @@ if click:
 
     if not found:
         st.warning("Aucune machine ici")
+
