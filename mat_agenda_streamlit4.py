@@ -287,7 +287,7 @@ def _form_activite(row=None):
     default_fin    = datetime.strptime(row["fin"],   "%H:%M:%S").time() if is_edit else time(9, 0)
     default_desc   = row.get("description", "") if is_edit else ""
     default_tech   = row.get("technicien", "MAT") if is_edit else "MAT"
-    default_color  = row.get("color") or COULEUR_TECH.get(default_tech, "#00ff9c")
+    default_color  = (row.get("color") if is_edit else None) or COULEUR_TECH.get(default_tech, "#00ff9c")
 
     d = st.date_input("📅 Date", value=default_date, format="DD/MM/YYYY")
     c1, c2 = st.columns(2)
