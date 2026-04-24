@@ -454,18 +454,35 @@ def dlg_taches():
     st.caption(f"📌 {nb_restant} tâche(s) en cours • {len(taches)} au total")
 
 # =========================================================
-# GESTION POPUPS DÉCLENCHÉES
+# GESTION POPUPS DÉCLENCHÉES (UN SEUL À LA FOIS)
 # =========================================================
+# Streamlit n'autorise qu'UN seul st.dialog ouvert par run.
+# On applique donc une priorité : zoom > confirm delete > edit > ajout > détails.
+# Le premier qui matche est ouvert, les autres attendront le prochain rerun.
 
-if st.session_state.get("zoom_image"):
+_dialog_opened = False
+
+if not _dialog_opened and st.session_state.get("zoom_image"):
     img = st.session_state.pop("zoom_image")
+    _dialog_opened = True
     dlg_zoom_image(img)
-if st.session_state.get("delete_id"):
+
+if not _dialog_opened and st.session_state.get("delete_id"):
+    _dialog_opened = True
     dlg_confirm_delete(st.session_state["delete_id"])
-if st.session_state.get("edit_row"):
+
+if not _dialog_opened and st.session_state.get("edit_row"):
+    _dialog_opened = True
     dlg_edit(st.session_state["edit_row"])
-if st.session_state.get("show_add"):
+
+if not _dialog_opened and st.session_state.get("show_add"):
+    _dialog_opened = True
     dlg_ajout()
+
+if not _dialog_opened and st.session_state.get("details_row"):
+    row = st.session_state.pop("details_row")
+    _dialog_opened = True
+    dlg_details_activite(row)
 
 # =========================================================
 # SIDEBAR
@@ -568,7 +585,9 @@ if page == "📅 Calendrier":
             event_id = state["eventClick"]["event"]["id"]
             match = df[df["id"].astype(str) == str(event_id)]
             if not match.empty:
-                dlg_details_activite(match.iloc[0].to_dict())
+                # On stocke pour ouvrir au prochain run (évite le conflit multi-dialogs)
+                st.session_state.details_row = match.iloc[0].to_dict()
+                st.rerun()
 
 # =========================================================
 # PAGE LISTE
