@@ -224,13 +224,13 @@ init_state()
 # DIALOGS (POPUPS)
 # =========================================================
 
-@st.dialog("🖼️ Image en grand")
+@st.dialog("🖼️ Image en grand", on_dismiss="rerun")
 def dlg_zoom_image(url: str):
     st.image(url, width="stretch")
     if st.button("Fermer", width="stretch"):
         st.rerun()
 
-@st.dialog("📋 Détails activité")
+@st.dialog("📋 Détails activité", on_dismiss="rerun")
 def dlg_details_activite(row: dict):
     st.subheader("📄 Description")
     st.code(row.get("description", ""))
@@ -253,15 +253,17 @@ def dlg_details_activite(row: dict):
                     st.rerun()
 
     st.divider()
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     if c1.button("✏️ Modifier", width="stretch"):
         st.session_state.edit_row = row
         st.rerun()
     if c2.button("🗑️ Supprimer", width="stretch"):
         st.session_state.delete_id = row["id"]
         st.rerun()
+    if c3.button("Fermer", width="stretch"):
+        st.rerun()
 
-@st.dialog("🗑️ Confirmer la suppression")
+@st.dialog("🗑️ Confirmer la suppression", on_dismiss="rerun")
 def dlg_confirm_delete(activite_id):
     st.warning("Cette action est **irréversible**. Supprimer cette activité ?")
     c1, c2 = st.columns(2)
@@ -269,13 +271,11 @@ def dlg_confirm_delete(activite_id):
         try:
             supabase.table("agenda").delete().eq("id", activite_id).execute()
             invalider_cache()
-            st.session_state.pop("delete_id", None)
             st.success("Activité supprimée")
             st.rerun()
         except Exception as e:
             st.error(f"Erreur : {e}")
     if c2.button("❌ Annuler", width="stretch"):
-        st.session_state.pop("delete_id", None)
         st.rerun()
 
 def _form_activite(row=None):
@@ -356,26 +356,22 @@ def _form_activite(row=None):
 
             invalider_cache()
             st.session_state.upload_key += 1
-            st.session_state.pop("edit_row", None)
-            st.session_state.pop("show_add", None)
             st.rerun()
         except Exception as e:
             st.error(f"Erreur : {e}")
 
     if c2.button("Annuler", width="stretch"):
-        st.session_state.pop("edit_row", None)
-        st.session_state.pop("show_add", None)
         st.rerun()
 
-@st.dialog("➕ Ajouter une activité", width="large")
+@st.dialog("➕ Ajouter une activité", width="large", on_dismiss="rerun")
 def dlg_ajout():
     _form_activite()
 
-@st.dialog("✏️ Modifier l'activité", width="large")
+@st.dialog("✏️ Modifier l'activité", width="large", on_dismiss="rerun")
 def dlg_edit(row):
     _form_activite(row)
 
-@st.dialog("📝 Tâches à prévoir", width="large")
+@st.dialog("📝 Tâches à prévoir", width="large", on_dismiss="rerun")
 def dlg_taches():
     taches = lire_taches()
 
@@ -457,32 +453,39 @@ def dlg_taches():
 # GESTION POPUPS DÉCLENCHÉES (UN SEUL À LA FOIS)
 # =========================================================
 # Streamlit n'autorise qu'UN seul st.dialog ouvert par run.
-# On applique donc une priorité : zoom > confirm delete > edit > ajout > détails.
-# Le premier qui matche est ouvert, les autres attendront le prochain rerun.
+# Priorité : zoom > confirm delete > edit > ajout > détails.
+#
+# IMPORTANT : on POP la clé dès l'ouverture du popup.
+# - Si le user clique sur la croix/ESC : on_dismiss="rerun" relance → clé absente → popup fermé ✅
+# - Si le user clique sur un bouton interne : le handler fait son job puis st.rerun()
+#   (et peut remettre une autre clé ex: edit_row si on clique "Modifier")
 
 _dialog_opened = False
 
 if not _dialog_opened and st.session_state.get("zoom_image"):
-    img = st.session_state.pop("zoom_image")
     _dialog_opened = True
+    img = st.session_state.pop("zoom_image")
     dlg_zoom_image(img)
 
 if not _dialog_opened and st.session_state.get("delete_id"):
     _dialog_opened = True
-    dlg_confirm_delete(st.session_state["delete_id"])
+    did = st.session_state.pop("delete_id")
+    dlg_confirm_delete(did)
 
 if not _dialog_opened and st.session_state.get("edit_row"):
     _dialog_opened = True
-    dlg_edit(st.session_state["edit_row"])
+    er = st.session_state.pop("edit_row")
+    dlg_edit(er)
 
 if not _dialog_opened and st.session_state.get("show_add"):
     _dialog_opened = True
+    st.session_state.pop("show_add", None)
     dlg_ajout()
 
 if not _dialog_opened and st.session_state.get("details_row"):
-    row = st.session_state.pop("details_row")
     _dialog_opened = True
-    dlg_details_activite(row)
+    dr = st.session_state.pop("details_row")
+    dlg_details_activite(dr)
 
 # =========================================================
 # SIDEBAR
