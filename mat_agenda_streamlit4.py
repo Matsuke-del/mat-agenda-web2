@@ -214,6 +214,8 @@ def init_state():
         "upload_key": 0,
         "zoom_image": None,
         "zone_selectionnee": None,
+        "calendar_version": 0,
+        "last_event_click": None,
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -271,6 +273,9 @@ def dlg_confirm_delete(activite_id):
         try:
             supabase.table("agenda").delete().eq("id", activite_id).execute()
             invalider_cache()
+            # Reset du calendrier : nouvelle clé → nouveau composant → eventClick vide
+            st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
+            st.session_state.pop("last_event_click", None)
             st.success("Activité supprimée")
             st.rerun()
         except Exception as e:
@@ -356,6 +361,8 @@ def _form_activite(row=None):
 
             invalider_cache()
             st.session_state.upload_key += 1
+            st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
+            st.session_state.pop("last_event_click", None)
             st.rerun()
         except Exception as e:
             st.error(f"Erreur : {e}")
@@ -562,6 +569,10 @@ if page == "📅 Calendrier":
                 "color": row.get("color") or COULEUR_TECH.get(row.get("technicien"), "#00ff9c"),
             })
 
+        # Clé dynamique : change après chaque suppression pour réinitialiser
+        # l'état interne du composant calendar (sinon l'eventClick reste "collé")
+        cal_key = f"calendar_{st.session_state.get('calendar_version', 0)}"
+
         state = calendar(
             events=events,
             options={
@@ -581,16 +592,22 @@ if page == "📅 Calendrier":
                 }
             },
             callbacks=["eventClick"],
-            key="calendar_main",
+            key=cal_key,
         )
 
+        # Éviter de retraiter le même clic en boucle : on mémorise le dernier traité
         if state and state.get("eventClick"):
-            event_id = state["eventClick"]["event"]["id"]
-            match = df[df["id"].astype(str) == str(event_id)]
-            if not match.empty:
-                # On stocke pour ouvrir au prochain run (évite le conflit multi-dialogs)
-                st.session_state.details_row = match.iloc[0].to_dict()
-                st.rerun()
+            event_click = state["eventClick"]
+            # On utilise le timestamp de l'event comme identifiant unique du clic
+            click_signature = f"{event_click['event']['id']}_{event_click.get('view', {}).get('currentStart', '')}"
+
+            if st.session_state.get("last_event_click") != click_signature:
+                st.session_state.last_event_click = click_signature
+                event_id = event_click["event"]["id"]
+                match = df[df["id"].astype(str) == str(event_id)]
+                if not match.empty:
+                    st.session_state.details_row = match.iloc[0].to_dict()
+                    st.rerun()
 
 # =========================================================
 # PAGE LISTE
