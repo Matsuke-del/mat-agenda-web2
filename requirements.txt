@@ -1,6 +1,7 @@
 streamlit
 pandas
 requests
-streamlit-calendar
+pillow
 supabase
+streamlit-calendar
 streamlit-image-coordinates
