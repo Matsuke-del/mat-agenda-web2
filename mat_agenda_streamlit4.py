@@ -8,24 +8,24 @@ MAT AGENDA - version Streamlit (PocketBase backend)
 - Compression auto des images a l'upload
 - Tout le reste comme avant : calendrier, liste, stats, plan, taches
 """
-
+ 
 import io
 import json
 from datetime import datetime, time, date
-
+ 
 import pandas as pd
 import requests
 import streamlit as st
 from PIL import Image, ImageOps
 from streamlit_calendar import calendar
 from streamlit_image_coordinates import streamlit_image_coordinates
-
+ 
 # =========================================================
 # CONFIG
 # =========================================================
-
+ 
 st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
-
+ 
 # ---- Secrets (Streamlit Cloud > Settings > Secrets) ----
 # secrets.toml :
 #   POCKETBASE_URL           = "https://xxx.trycloudflare.com"
@@ -35,9 +35,9 @@ st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
 #   PUSHOVER_TOKEN           = "..."   (optionnel)
 #   PUSHOVER_USER            = "..."   (optionnel)
 try:
-    POCKETBASE_URL           = st.secrets["https://current-executive-voip-recorders.trycloudflare.com "].rstrip("/")
-    POCKETBASE_USER_EMAIL    = st.secrets["tchama.anli@outlook.fr"]
-    POCKETBASE_USER_PASSWORD = st.secrets["Rachka13072018"]
+    POCKETBASE_URL           = st.secrets["POCKETBASE_URL"].rstrip("/")
+    POCKETBASE_USER_EMAIL    = st.secrets["POCKETBASE_USER_EMAIL"]
+    POCKETBASE_USER_PASSWORD = st.secrets["POCKETBASE_USER_PASSWORD"]
     APP_PASSWORD             = st.secrets["APP_PASSWORD"]
     PUSHOVER_TOKEN           = st.secrets.get("PUSHOVER_TOKEN", "")
     PUSHOVER_USER            = st.secrets.get("PUSHOVER_USER",  "")
@@ -46,8 +46,8 @@ except (KeyError, FileNotFoundError):
         "⚠️ Configuration manquante. Ajoute dans Streamlit Cloud > Settings > Secrets :\n\n"
         "```toml\n"
         'POCKETBASE_URL = "https://xxx.trycloudflare.com"\n'
-        'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
-        'POCKETBASE_USER_PASSWORD = "..."\n'
+        'POCKETBASE_USER_EMAIL = "tchama.anli@outlook.fr"\n'
+        'POCKETBASE_USER_PASSWORD = "Rachka13072018"\n'
         'APP_PASSWORD = "matagenda2026"\n'
         "```"
     )
