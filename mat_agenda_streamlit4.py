@@ -36,7 +36,7 @@ st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
 #   PUSHOVER_USER            = "..."   (optionnel)
 try:
     POCKETBASE_URL           = st.secrets["https://current-executive-voip-recorders.trycloudflare.com"].rstrip("/")
-    POCKETBASE_USER_EMAIL    = st.secrets["tchama.anli@outlook.fr"]
+    POCKETBASE_USER_EMAIL    = st.secrets["app@matagenda.local"]
     POCKETBASE_USER_PASSWORD = st.secrets["Rachka13072018"]
     APP_PASSWORD             = st.secrets["matagenda2026"]
     PUSHOVER_TOKEN           = st.secrets.get("PUSHOVER_TOKEN", "")
@@ -46,7 +46,7 @@ except (KeyError, FileNotFoundError):
         "⚠️ Configuration manquante. Ajoute dans Streamlit Cloud > Settings > Secrets :\n\n"
         "```toml\n"
         'POCKETBASE_URL = "https://current-executive-voip-recorders.trycloudflare.com"\n'
-        'POCKETBASE_USER_EMAIL = "tchama.anli@outlook.fr"\n'
+        'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
         'POCKETBASE_USER_PASSWORD = "Rachka13072018"\n'
         'APP_PASSWORD = "matagenda2026"\n'
         "```"
