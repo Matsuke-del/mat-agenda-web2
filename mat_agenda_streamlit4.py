@@ -1,27 +1,22 @@
 """
-MAT AGENDA — version Streamlit optimisée
-========================================
-Améliorations par rapport à la version précédente :
-- Cache Supabase (ttl=60s) + bouton actualiser => gros gain de vitesse
-- Clés API sortables dans st.secrets
-- Tâches à prévoir dans une table dédiée `taches` (plus de perte de données)
-- Popups (st.dialog) pour Ajout / Édition / Suppression / Zoom image
-- Confirmation avant suppression
-- Filtres liste : texte + technicien + plage de dates + pagination
-- Export CSV
-- Stats enrichies (heures par technicien + par mois)
-- Plan usine : tooltip + badges de comptage par zone
-- Gestion d'erreurs sur les appels Supabase
+MAT AGENDA - version Streamlit (PocketBase backend)
+====================================================================
+- Backend PocketBase (au lieu de Supabase)
+- Ecran de login au demarrage (mot de passe simple)
+- Authentification automatique a PocketBase
+- Reecriture des URLs d'images locales 127.0.0.1 -> URL publique
+- Compression auto des images a l'upload
+- Tout le reste comme avant : calendrier, liste, stats, plan, taches
 """
 
+import io
 import json
-from datetime import datetime, time, date, timedelta
+from datetime import datetime, time, date
 
 import pandas as pd
 import requests
 import streamlit as st
-from PIL import Image
-from supabase import create_client
+from PIL import Image, ImageOps
 from streamlit_calendar import calendar
 from streamlit_image_coordinates import streamlit_image_coordinates
 
@@ -31,43 +26,197 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 
 st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
 
-# ---- Secrets (Streamlit Cloud → Settings → Secrets) ----
-# Fichier .streamlit/secrets.toml (exemple) :
-#   SUPABASE_URL = "https://..."
-#   SUPABASE_KEY = "sb_publishable_..."
-#   PUSHOVER_TOKEN = "..."
-#   PUSHOVER_USER  = "..."
+# ---- Secrets (Streamlit Cloud > Settings > Secrets) ----
+# secrets.toml :
+#   POCKETBASE_URL           = "https://xxx.trycloudflare.com"
+#   POCKETBASE_USER_EMAIL    = "app@matagenda.local"
+#   POCKETBASE_USER_PASSWORD = "..."
+#   APP_PASSWORD             = "matagenda2026"
+#   PUSHOVER_TOKEN           = "..."   (optionnel)
+#   PUSHOVER_USER            = "..."   (optionnel)
 try:
-    SUPABASE_URL   = st.secrets["SUPABASE_URL"]
-    SUPABASE_KEY   = st.secrets["SUPABASE_KEY"]
-    PUSHOVER_TOKEN = st.secrets.get("PUSHOVER_TOKEN", "")
-    PUSHOVER_USER  = st.secrets.get("PUSHOVER_USER",  "")
+    POCKETBASE_URL           = st.secrets["POCKETBASE_URL"].rstrip("/")
+    POCKETBASE_USER_EMAIL    = st.secrets["POCKETBASE_USER_EMAIL"]
+    POCKETBASE_USER_PASSWORD = st.secrets["POCKETBASE_USER_PASSWORD"]
+    APP_PASSWORD             = st.secrets["APP_PASSWORD"]
+    PUSHOVER_TOKEN           = st.secrets.get("PUSHOVER_TOKEN", "")
+    PUSHOVER_USER            = st.secrets.get("PUSHOVER_USER",  "")
 except (KeyError, FileNotFoundError):
-    # Fallback dev — à RETIRER une fois les secrets configurés
-    SUPABASE_URL   = "https://quamffmaxqhhtyxworou.supabase.co"
-    SUPABASE_KEY   = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
-    PUSHOVER_TOKEN = "a6vqbmhhjyzu19ay371qxhmmwuwnpp"
-    PUSHOVER_USER  = "uykkgtvss4kmbyuscgce5xqgdb5ufy"
+    st.error(
+        "⚠️ Configuration manquante. Ajoute dans Streamlit Cloud > Settings > Secrets :\n\n"
+        "```toml\n"
+        'POCKETBASE_URL = "https://xxx.trycloudflare.com"\n'
+        'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
+        'POCKETBASE_USER_PASSWORD = "..."\n'
+        'APP_PASSWORD = "matagenda2026"\n'
+        "```"
+    )
+    st.stop()
 
 APP_URL = "https://mat-agenda-web2-mngwrfjcalzf3kbpdvd99n.streamlit.app"
 
 TECHNICIENS = ["MAT", "Sébastien"]
+COULEUR_TECH = {"MAT": "#00ff9c", "Sébastien": "#00ffee"}
 
-# Couleur par défaut par technicien
-COULEUR_TECH = {
-    "MAT":       "#00ff9c",
-    "Sébastien": "#00ffee",
-}
+# Compression images
+COMPRESS_MAX_DIM = 1600
+COMPRESS_QUALITY = 85
 
 # =========================================================
-# CLIENT SUPABASE
+# ECRAN DE LOGIN
 # =========================================================
+
+if "auth_ok" not in st.session_state:
+    st.session_state.auth_ok = False
+
+if not st.session_state.auth_ok:
+    st.title("🔒 MAT AGENDA — Connexion")
+    st.write("Entre le mot de passe pour accéder à l'application.")
+
+    with st.form("login_form"):
+        password = st.text_input("Mot de passe", type="password")
+        submit = st.form_submit_button("Connexion", type="primary")
+        if submit:
+            if password == APP_PASSWORD:
+                st.session_state.auth_ok = True
+                st.rerun()
+            else:
+                st.error("❌ Mot de passe incorrect")
+    st.stop()
+
+# =========================================================
+# CLIENT POCKETBASE
+# =========================================================
+
+class PocketBaseClient:
+    """Client minimaliste pour PocketBase, equivalent supabase-py basique."""
+
+    def __init__(self, base_url, email, password):
+        self.base_url = base_url.rstrip("/")
+        self.email = email
+        self.password = password
+        self.token = None
+        self.user_id = None
+
+    def authenticate(self):
+        """Login via le compte 'app' (collection users)."""
+        r = requests.post(
+            f"{self.base_url}/api/collections/users/auth-with-password",
+            json={"identity": self.email, "password": self.password},
+            timeout=15
+        )
+        if r.status_code != 200:
+            raise Exception(
+                f"Echec authentification PocketBase ({r.status_code}) : {r.text[:200]}"
+            )
+        data = r.json()
+        self.token = data["token"]
+        self.user_id = data["record"]["id"]
+        return self.token
+
+    def _headers(self, json_content=False):
+        h = {}
+        if self.token:
+            h["Authorization"] = self.token
+        if json_content:
+            h["Content-Type"] = "application/json"
+        return h
+
+    def list_records(self, collection, page=1, per_page=200, sort=None, filter_=None):
+        params = {"page": page, "perPage": per_page}
+        if sort:
+            params["sort"] = sort
+        if filter_:
+            params["filter"] = filter_
+        r = requests.get(
+            f"{self.base_url}/api/collections/{collection}/records",
+            params=params,
+            headers=self._headers(),
+            timeout=30
+        )
+        if r.status_code != 200:
+            raise Exception(f"list {collection} : {r.status_code} - {r.text[:200]}")
+        return r.json()
+
+    def list_all(self, collection, sort=None, filter_=None):
+        """Liste toutes les pages d'une collection."""
+        all_items = []
+        page = 1
+        while True:
+            data = self.list_records(collection, page=page, per_page=200,
+                                      sort=sort, filter_=filter_)
+            all_items.extend(data.get("items", []))
+            if page >= data.get("totalPages", 1):
+                break
+            page += 1
+        return all_items
+
+    def create_record(self, collection, payload, files=None):
+        if files:
+            r = requests.post(
+                f"{self.base_url}/api/collections/{collection}/records",
+                data=payload, files=files,
+                headers=self._headers(), timeout=60
+            )
+        else:
+            r = requests.post(
+                f"{self.base_url}/api/collections/{collection}/records",
+                json=payload,
+                headers=self._headers(json_content=True), timeout=30
+            )
+        if r.status_code not in (200, 201):
+            raise Exception(f"create {collection} : {r.status_code} - {r.text[:300]}")
+        return r.json()
+
+    def update_record(self, collection, record_id, payload, files=None):
+        if files:
+            r = requests.patch(
+                f"{self.base_url}/api/collections/{collection}/records/{record_id}",
+                data=payload, files=files,
+                headers=self._headers(), timeout=60
+            )
+        else:
+            r = requests.patch(
+                f"{self.base_url}/api/collections/{collection}/records/{record_id}",
+                json=payload,
+                headers=self._headers(json_content=True), timeout=30
+            )
+        if r.status_code != 200:
+            raise Exception(f"update {collection}/{record_id} : {r.status_code} - {r.text[:300]}")
+        return r.json()
+
+    def delete_record(self, collection, record_id):
+        r = requests.delete(
+            f"{self.base_url}/api/collections/{collection}/records/{record_id}",
+            headers=self._headers(), timeout=30
+        )
+        if r.status_code not in (200, 204):
+            raise Exception(f"delete {collection}/{record_id} : {r.status_code}")
+        return True
+
 
 @st.cache_resource
-def get_supabase():
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+def get_pb():
+    """Client PocketBase mis en cache pour toute la session."""
+    pb = PocketBaseClient(POCKETBASE_URL, POCKETBASE_USER_EMAIL, POCKETBASE_USER_PASSWORD)
+    pb.authenticate()
+    return pb
 
-supabase = get_supabase()
+try:
+    pb = get_pb()
+except Exception as e:
+    st.error(f"❌ Impossible de se connecter à PocketBase :\n\n{e}")
+    st.info(
+        "Vérifie que :\n"
+        "- PocketBase tourne sur ton PC\n"
+        "- Cloudflare Tunnel est actif\n"
+        "- L'URL POCKETBASE_URL dans les secrets est à jour\n"
+        "- Le compte 'app@matagenda.local' existe bien"
+    )
+    if st.button("🔓 Se déconnecter (Streamlit)"):
+        st.session_state.auth_ok = False
+        st.rerun()
+    st.stop()
 
 # =========================================================
 # STYLE
@@ -111,7 +260,6 @@ def calc_heures(row):
         return 0
 
 def send_push(desc, date_str, debut, fin, tech):
-    """Envoi notification Pushover (non bloquant — on ignore les erreurs)."""
     if not PUSHOVER_TOKEN or not PUSHOVER_USER:
         return
     try:
@@ -130,69 +278,129 @@ def send_push(desc, date_str, debut, fin, tech):
     except Exception:
         pass
 
+def reecrire_url_image(url):
+    """Si l'URL pointe vers 127.0.0.1:8090 (PocketBase local),
+    la remplace par l'URL publique POCKETBASE_URL."""
+    if not isinstance(url, str):
+        return url
+    if "127.0.0.1:8090" in url:
+        return url.replace("http://127.0.0.1:8090", POCKETBASE_URL)
+    if "localhost:8090" in url:
+        return url.replace("http://localhost:8090", POCKETBASE_URL)
+    return url
+
 def parse_images(raw):
-    """Retourne toujours une liste d'URL d'images."""
+    """Retourne toujours une liste d'URL d'images, avec reecriture localhost."""
     if not raw:
         return []
     if isinstance(raw, list):
-        return [x for x in raw if isinstance(x, str)]
-    try:
-        imgs = json.loads(raw)
-        if isinstance(imgs, list):
-            return [x for x in imgs if isinstance(x, str)]
-        if isinstance(imgs, str):
-            return [imgs]
-    except Exception:
-        if isinstance(raw, str) and raw.startswith("http"):
-            return [raw]
-    return []
-
-def upload_images(files):
-    """Upload une liste de fichiers UploadedFile vers Supabase Storage."""
-    urls = []
-    for f in files or []:
+        urls = [x for x in raw if isinstance(x, str)]
+    else:
         try:
-            file_name = f"{int(datetime.now().timestamp()*1000)}_{f.name}"
-            supabase.storage.from_("agenda-images").upload(file_name, f.getvalue())
-            urls.append(supabase.storage.from_("agenda-images").get_public_url(file_name))
-        except Exception as e:
-            st.error(f"Erreur upload {f.name} : {e}")
-    return urls
+            imgs = json.loads(raw)
+            if isinstance(imgs, list):
+                urls = [x for x in imgs if isinstance(x, str)]
+            elif isinstance(imgs, str):
+                urls = [imgs]
+            else:
+                urls = []
+        except Exception:
+            if isinstance(raw, str) and raw.startswith("http"):
+                urls = [raw]
+            else:
+                urls = []
+    return [reecrire_url_image(u) for u in urls]
 
 # =========================================================
-# ACCÈS DATA (avec cache)
+# COMPRESSION D'IMAGES
+# =========================================================
+
+def compresser_bytes(content_bytes,
+                     max_dim=COMPRESS_MAX_DIM,
+                     quality=COMPRESS_QUALITY):
+    img = Image.open(io.BytesIO(content_bytes))
+    try:
+        img = ImageOps.exif_transpose(img)
+    except Exception:
+        pass
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    w, h = img.size
+    if max(w, h) > max_dim:
+        ratio = max_dim / max(w, h)
+        img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=quality, optimize=True, progressive=True)
+    return buf.getvalue()
+
+def upload_images_pocketbase(record_id, files):
+    """Uploade des fichiers (UploadedFile Streamlit) dans le champ 'images'
+    du record PocketBase. Retourne les noms de fichiers stockes."""
+    if not files:
+        return []
+
+    multipart = []
+    for f in files:
+        try:
+            content_origine = f.getvalue()
+            taille_o = len(content_origine)
+            content = compresser_bytes(content_origine)
+            taille_n = len(content)
+
+            base = f.name.rsplit(".", 1)[0]
+            filename = f"{base}.jpg"
+            multipart.append(("images", (filename, content, "image/jpeg")))
+
+            ratio = (1 - taille_n / taille_o) * 100 if taille_o else 0
+            st.toast(
+                f"📦 {f.name} : {taille_o//1024} Ko → {taille_n//1024} Ko (-{ratio:.0f}%)",
+                icon="✅"
+            )
+        except Exception as e:
+            st.error(f"Erreur traitement {f.name} : {e}")
+
+    if not multipart:
+        return []
+
+    # PocketBase : update PATCH avec multipart/form-data, le serveur ajoute aux files existants
+    r = requests.patch(
+        f"{POCKETBASE_URL}/api/collections/agenda/records/{record_id}",
+        headers=pb._headers(),
+        files=multipart,
+        timeout=120
+    )
+    if r.status_code != 200:
+        st.error(f"Erreur upload : {r.status_code} - {r.text[:300]}")
+        return []
+
+    data = r.json()
+    return data.get("images", [])
+
+# =========================================================
+# ACCES DATA (avec cache)
 # =========================================================
 
 @st.cache_data(ttl=60, show_spinner="Chargement des activités...")
 def lire_activites() -> pd.DataFrame:
     try:
-        resp = supabase.table("agenda").select("*").execute()
-        data = resp.data or []
+        items = pb.list_all("agenda", sort="date,debut")
     except Exception as e:
-        st.error(f"Erreur lecture Supabase : {e}")
+        st.error(f"Erreur lecture PocketBase (agenda) : {e}")
         return pd.DataFrame()
-    if not data:
+
+    if not items:
         return pd.DataFrame()
-    df = pd.DataFrame(data).sort_values(["date", "debut"])
+    df = pd.DataFrame(items)
     df["heures"] = df.apply(calc_heures, axis=1)
     return df
 
 @st.cache_data(ttl=30, show_spinner=False)
-def lire_taches() -> list[dict]:
-    """Lit les tâches depuis la table dédiée `taches`."""
+def lire_taches() -> list:
     try:
-        resp = (supabase.table("taches")
-                .select("*")
-                .order("done", desc=False)
-                .order("created_at", desc=True)
-                .execute())
-        return resp.data or []
+        items = pb.list_all("taches", sort="done,-created")
+        return items or []
     except Exception as e:
-        st.error(
-            "⚠️ La table `taches` n'est pas accessible. "
-            "As-tu exécuté le script `01_creer_table_taches.sql` dans Supabase ?\n\n"
-            f"Détail : {e}"
-        )
+        st.error(f"Erreur lecture PocketBase (taches) : {e}")
         return []
 
 def invalider_cache():
@@ -243,14 +451,31 @@ def dlg_details_activite(row: dict):
     c2.write(f"👷 **Technicien** : {row.get('technicien', 'Non défini')}")
     c2.write(f"🎨 **Couleur** : `{row.get('color', '')}`")
 
-    imgs = parse_images(row.get("image_url"))
+    # Construire les URLs d'images depuis le champ "images" de PocketBase
+    record_id = row["id"]
+    images_files = row.get("images", []) or []
+    if isinstance(images_files, str):
+        images_files = [images_files] if images_files else []
+
+    # URLs depuis le champ "images" (vraies images dans PocketBase)
+    imgs = [
+        f"{POCKETBASE_URL}/api/files/agenda/{record_id}/{name}"
+        for name in images_files
+    ]
+    # Ajouter aussi les URLs externes encore presentes dans image_url
+    imgs += parse_images(row.get("image_url"))
+
+    # Deduplication conservant l'ordre
+    seen = set()
+    imgs = [x for x in imgs if not (x in seen or seen.add(x))]
+
     if imgs:
         st.subheader(f"🖼️ Photos ({len(imgs)})")
         cols = st.columns(min(len(imgs), 3))
         for i, img in enumerate(imgs):
             with cols[i % 3]:
                 st.image(img, width="stretch")
-                if st.button("🔍 Zoom", key=f"zoom_{row['id']}_{i}"):
+                if st.button("🔍 Zoom", key=f"zoom_{record_id}_{i}"):
                     st.session_state.zoom_image = img
                     st.rerun()
 
@@ -271,9 +496,8 @@ def dlg_confirm_delete(activite_id):
     c1, c2 = st.columns(2)
     if c1.button("✅ Oui, supprimer", width="stretch"):
         try:
-            supabase.table("agenda").delete().eq("id", activite_id).execute()
+            pb.delete_record("agenda", activite_id)
             invalider_cache()
-            # Reset du calendrier : nouvelle clé → nouveau composant → eventClick vide
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
             st.session_state.pop("last_event_click", None)
             st.success("Activité supprimée")
@@ -284,15 +508,15 @@ def dlg_confirm_delete(activite_id):
         st.rerun()
 
 def _form_activite(row=None):
-    """Formulaire partagé entre ajout et édition. row=None => ajout."""
+    """Formulaire partage entre ajout et edition."""
     is_edit = row is not None
 
-    default_date   = pd.to_datetime(row["date"]).date() if is_edit else date.today()
-    default_debut  = datetime.strptime(row["debut"], "%H:%M:%S").time() if is_edit else time(8, 0)
-    default_fin    = datetime.strptime(row["fin"],   "%H:%M:%S").time() if is_edit else time(9, 0)
-    default_desc   = row.get("description", "") if is_edit else ""
-    default_tech   = row.get("technicien", "MAT") if is_edit else "MAT"
-    default_color  = (row.get("color") if is_edit else None) or COULEUR_TECH.get(default_tech, "#00ff9c")
+    default_date  = pd.to_datetime(row["date"]).date() if is_edit and row.get("date") else date.today()
+    default_debut = datetime.strptime(row["debut"], "%H:%M:%S").time() if is_edit and row.get("debut") else time(8, 0)
+    default_fin   = datetime.strptime(row["fin"],   "%H:%M:%S").time() if is_edit and row.get("fin")   else time(9, 0)
+    default_desc  = row.get("description", "") if is_edit else ""
+    default_tech  = row.get("technicien", "MAT") if is_edit else "MAT"
+    default_color = (row.get("color") if is_edit else None) or COULEUR_TECH.get(default_tech, "#00ff9c")
 
     d = st.date_input("📅 Date", value=default_date, format="DD/MM/YYYY")
     c1, c2 = st.columns(2)
@@ -306,24 +530,31 @@ def _form_activite(row=None):
                          index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
     color = c2.color_picker("🎨 Couleur", default_color)
 
-    # Images existantes
-    images_existantes = parse_images(row.get("image_url")) if is_edit else []
+    # Images existantes : depuis le champ "images" de PocketBase
+    images_existantes_files = row.get("images", []) if is_edit else []
+    if isinstance(images_existantes_files, str):
+        images_existantes_files = [images_existantes_files] if images_existantes_files else []
+
+    record_id_edit = row.get("id") if is_edit else None
+
     images_a_garder = []
-    if images_existantes:
+    if images_existantes_files:
         st.markdown("**Images existantes** (décoche pour supprimer)")
-        cols = st.columns(min(len(images_existantes), 3))
-        for i, img in enumerate(images_existantes):
+        cols = st.columns(min(len(images_existantes_files), 3))
+        for i, img_name in enumerate(images_existantes_files):
+            url = f"{POCKETBASE_URL}/api/files/agenda/{record_id_edit}/{img_name}"
             with cols[i % 3]:
-                st.image(img, width="stretch")
+                st.image(url, width="stretch")
                 garder = st.checkbox("Garder", value=True, key=f"keep_img_{i}")
                 if garder:
-                    images_a_garder.append(img)
+                    images_a_garder.append(img_name)
 
     nouvelles_images = st.file_uploader(
-        "📤 Ajouter des images",
+        "📤 Ajouter des images (compressées automatiquement)",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        key=f"uploader_{st.session_state.upload_key}"
+        key=f"uploader_{st.session_state.upload_key}",
+        help=f"Redimensionne a {COMPRESS_MAX_DIM}px max, JPEG qualite {COMPRESS_QUALITY}."
     )
 
     st.divider()
@@ -337,8 +568,6 @@ def _form_activite(row=None):
             st.error("L'heure de fin doit être après l'heure de début")
             return
 
-        urls = images_a_garder + upload_images(nouvelles_images)
-
         payload = {
             "date":        d.isoformat(),
             "debut":       h_debut.strftime("%H:%M:%S"),
@@ -346,15 +575,83 @@ def _form_activite(row=None):
             "description": desc.strip(),
             "technicien":  tech,
             "color":       color,
-            "image_url":   json.dumps(urls),
         }
 
         try:
             if is_edit:
-                supabase.table("agenda").update(payload).eq("id", row["id"]).execute()
+                # En mode edit : on indique quelles images on garde (PocketBase remplace la liste)
+                # Puis on ajoute les nouvelles via un PATCH multipart separe
+                payload_keep = dict(payload)
+                payload_keep["images"] = images_a_garder
+
+                # Si on a des nouvelles images, on doit envoyer en multipart
+                if nouvelles_images:
+                    multipart = []
+                    for f in nouvelles_images:
+                        try:
+                            content_origine = f.getvalue()
+                            taille_o = len(content_origine)
+                            content = compresser_bytes(content_origine)
+                            taille_n = len(content)
+                            base = f.name.rsplit(".", 1)[0]
+                            filename = f"{base}.jpg"
+                            multipart.append(("images", (filename, content, "image/jpeg")))
+                            ratio = (1 - taille_n / taille_o) * 100 if taille_o else 0
+                            st.toast(
+                                f"📦 {f.name} : {taille_o//1024} Ko → {taille_n//1024} Ko (-{ratio:.0f}%)",
+                                icon="✅"
+                            )
+                        except Exception as e:
+                            st.error(f"Erreur traitement {f.name} : {e}")
+
+                    # En multipart, on doit aussi envoyer les images a garder via "images" champ multiple
+                    # PocketBase remplace la liste : on doit donc renvoyer aussi les noms gardes
+                    form_data = {k: v for k, v in payload.items()}
+                    # Trick : pour conserver les anciennes + ajouter, on utilise le champ "images+" si v0.23+
+                    # Sinon, on fait un update JSON d'abord (filtrant les images a garder),
+                    # puis un PATCH multipart avec les nouvelles seulement (qui s'ajoutent)
+                    pb.update_record("agenda", row["id"], payload_keep)  # met a jour les champs + filtre images gardees
+
+                    # PATCH multipart pour ajouter les nouvelles
+                    r = requests.patch(
+                        f"{POCKETBASE_URL}/api/collections/agenda/records/{row['id']}",
+                        headers=pb._headers(),
+                        files=multipart,
+                        timeout=120
+                    )
+                    if r.status_code != 200:
+                        st.error(f"Erreur upload images : {r.status_code} - {r.text[:300]}")
+                        return
+                else:
+                    # Pas de nouvelles images : juste update JSON avec la liste filtree
+                    pb.update_record("agenda", row["id"], payload_keep)
+
                 st.success("Activité modifiée ✅")
             else:
-                supabase.table("agenda").insert(payload).execute()
+                # Creation : un seul appel multipart si des images, sinon JSON
+                if nouvelles_images:
+                    multipart = []
+                    for f in nouvelles_images:
+                        try:
+                            content_origine = f.getvalue()
+                            taille_o = len(content_origine)
+                            content = compresser_bytes(content_origine)
+                            taille_n = len(content)
+                            base = f.name.rsplit(".", 1)[0]
+                            filename = f"{base}.jpg"
+                            multipart.append(("images", (filename, content, "image/jpeg")))
+                            ratio = (1 - taille_n / taille_o) * 100 if taille_o else 0
+                            st.toast(
+                                f"📦 {f.name} : {taille_o//1024} Ko → {taille_n//1024} Ko (-{ratio:.0f}%)",
+                                icon="✅"
+                            )
+                        except Exception as e:
+                            st.error(f"Erreur traitement {f.name} : {e}")
+
+                    pb.create_record("agenda", payload, files=multipart)
+                else:
+                    pb.create_record("agenda", payload)
+
                 send_push(desc, d.strftime("%d/%m/%Y"),
                           h_debut.strftime("%H:%M"), h_fin.strftime("%H:%M"), tech)
                 st.success("Activité ajoutée ✅")
@@ -382,7 +679,6 @@ def dlg_edit(row):
 def dlg_taches():
     taches = lire_taches()
 
-    # Ajout rapide
     with st.form("form_ajout_tache", clear_on_submit=True):
         c1, c2, c3 = st.columns([5, 2, 1])
         texte    = c1.text_input("Nouvelle tâche", label_visibility="collapsed",
@@ -392,11 +688,11 @@ def dlg_taches():
         ajouter  = c3.form_submit_button("➕")
         if ajouter and texte.strip():
             try:
-                supabase.table("taches").insert({
+                pb.create_record("taches", {
                     "texte": texte.strip(),
                     "priorite": priorite,
                     "done": False,
-                }).execute()
+                })
                 lire_taches.clear()
                 st.rerun()
             except Exception as e:
@@ -408,12 +704,10 @@ def dlg_taches():
         st.info("Aucune tâche. Ajoute-en une ci-dessus 👆")
         return
 
-    # Filtre affichage
     show_done = st.checkbox("Afficher aussi les tâches terminées",
                             value=False, key="show_done_taches")
     taches_aff = taches if show_done else [t for t in taches if not t.get("done")]
 
-    # Groupement par priorité (haute en haut)
     ordre_prio = {"haute": 0, "normale": 1, "basse": 2}
     taches_aff = sorted(taches_aff,
                         key=lambda t: (t.get("done", False),
@@ -430,8 +724,8 @@ def dlg_taches():
             if done != t.get("done", False):
                 try:
                     update = {"done": done,
-                              "done_at": datetime.now().isoformat() if done else None}
-                    supabase.table("taches").update(update).eq("id", t["id"]).execute()
+                              "done_at": datetime.now().isoformat() if done else ""}
+                    pb.update_record("taches", t["id"], update)
                     lire_taches.clear()
                     st.rerun()
                 except Exception as e:
@@ -446,7 +740,7 @@ def dlg_taches():
         with c3:
             if st.button("🗑️", key=f"task_del_{t['id']}"):
                 try:
-                    supabase.table("taches").delete().eq("id", t["id"]).execute()
+                    pb.delete_record("taches", t["id"])
                     lire_taches.clear()
                     st.rerun()
                 except Exception as e:
@@ -457,15 +751,8 @@ def dlg_taches():
     st.caption(f"📌 {nb_restant} tâche(s) en cours • {len(taches)} au total")
 
 # =========================================================
-# GESTION POPUPS DÉCLENCHÉES (UN SEUL À LA FOIS)
+# DECLENCHEMENT POPUPS (un seul a la fois)
 # =========================================================
-# Streamlit n'autorise qu'UN seul st.dialog ouvert par run.
-# Priorité : zoom > confirm delete > edit > ajout > détails.
-#
-# IMPORTANT : on POP la clé dès l'ouverture du popup.
-# - Si le user clique sur la croix/ESC : on_dismiss="rerun" relance → clé absente → popup fermé ✅
-# - Si le user clique sur un bouton interne : le handler fait son job puis st.rerun()
-#   (et peut remettre une autre clé ex: edit_row si on clique "Modifier")
 
 _dialog_opened = False
 
@@ -523,13 +810,21 @@ with st.sidebar:
         st.toast("Données rechargées", icon="✅")
         st.rerun()
 
-    # Indicateur rapide tâches non terminées
     try:
         nb_open = sum(1 for t in lire_taches() if not t.get("done"))
         if nb_open:
             st.caption(f"📌 {nb_open} tâche(s) en cours")
     except Exception:
         pass
+
+    st.divider()
+
+    # Bouton de deconnexion
+    if st.button("🔓 Déconnexion", width="stretch"):
+        st.session_state.auth_ok = False
+        st.rerun()
+
+    st.caption(f"🟢 Connecté à PocketBase")
 
 # =========================================================
 # LECTURE DATA GLOBALE
@@ -547,7 +842,6 @@ if page == "📅 Calendrier":
     if df.empty:
         st.info("Aucune activité. Clique sur ➕ Ajouter activité dans la barre latérale.")
     else:
-        # Filtre technicien rapide
         c1, _ = st.columns([2, 6])
         tech_filter = c1.selectbox(
             "Filtrer par technicien",
@@ -569,8 +863,6 @@ if page == "📅 Calendrier":
                 "color": row.get("color") or COULEUR_TECH.get(row.get("technicien"), "#00ff9c"),
             })
 
-        # Clé dynamique : change après chaque suppression pour réinitialiser
-        # l'état interne du composant calendar (sinon l'eventClick reste "collé")
         cal_key = f"calendar_{st.session_state.get('calendar_version', 0)}"
 
         state = calendar(
@@ -595,10 +887,8 @@ if page == "📅 Calendrier":
             key=cal_key,
         )
 
-        # Éviter de retraiter le même clic en boucle : on mémorise le dernier traité
         if state and state.get("eventClick"):
             event_click = state["eventClick"]
-            # On utilise le timestamp de l'event comme identifiant unique du clic
             click_signature = f"{event_click['event']['id']}_{event_click.get('view', {}).get('currentStart', '')}"
 
             if st.session_state.get("last_event_click") != click_signature:
@@ -619,7 +909,6 @@ elif page == "📂 Liste":
     if df.empty:
         st.info("Aucune activité")
     else:
-        # --- FILTRES ---
         with st.expander("🔍 Filtres", expanded=True):
             c1, c2, c3 = st.columns(3)
             search_text = c1.text_input(
@@ -663,7 +952,6 @@ elif page == "📂 Liste":
         st.session_state.filter_date_debut = date_debut
         st.session_state.filter_date_fin   = date_fin
 
-        # --- APPLICATION DES FILTRES ---
         sub = df.copy()
         if search_text:
             for mot in search_text.split():
@@ -676,13 +964,12 @@ elif page == "📂 Liste":
             (pd.to_datetime(sub["date"]).dt.date <= date_fin)
         ]
 
-        # --- HEADER RÉSULTATS + EXPORT ---
         c1, c2, c3 = st.columns([3, 2, 2])
         c1.caption(f"📊 **{len(sub)}** activité(s) • "
                    f"⏱ **{round(sub['heures'].sum(), 1)} h** cumulées")
 
         if not sub.empty:
-            csv = sub.drop(columns=["heures"], errors="ignore").to_csv(index=False)
+            csv = sub.drop(columns=["heures", "images"], errors="ignore").to_csv(index=False)
             c3.download_button(
                 "📥 Export CSV",
                 data=csv,
@@ -691,7 +978,6 @@ elif page == "📂 Liste":
                 width="stretch"
             )
 
-        # --- PAGINATION ---
         if sub.empty:
             st.info("Aucune activité trouvée avec ces filtres")
         else:
@@ -715,7 +1001,6 @@ elif page == "📂 Liste":
             debut_idx = (st.session_state.page_num - 1) * PAR_PAGE
             fin_idx   = debut_idx + PAR_PAGE
 
-            # --- AFFICHAGE ---
             for _, row in sub.iloc[debut_idx:fin_idx].iterrows():
                 with st.container():
                     st.markdown('<div class="activity-card">', unsafe_allow_html=True)
@@ -729,7 +1014,19 @@ elif page == "📂 Liste":
                         )
                         with st.expander("Voir détails"):
                             st.code(row["description"])
-                            imgs = parse_images(row.get("image_url"))
+                            # Images du champ "images" PocketBase
+                            record_id = row["id"]
+                            imgs_files = row.get("images", []) or []
+                            if isinstance(imgs_files, str):
+                                imgs_files = [imgs_files] if imgs_files else []
+                            imgs = [
+                                f"{POCKETBASE_URL}/api/files/agenda/{record_id}/{n}"
+                                for n in imgs_files
+                            ]
+                            imgs += parse_images(row.get("image_url"))
+                            seen = set()
+                            imgs = [x for x in imgs if not (x in seen or seen.add(x))]
+
                             if imgs:
                                 cols = st.columns(min(len(imgs), 4))
                                 for i, img in enumerate(imgs):
@@ -761,7 +1058,6 @@ elif page == "📊 Statistiques":
         )
         sub = df if tech_filter == "Tous" else df[df["technicien"] == tech_filter]
 
-        # Metrics
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("⏱ Temps total", f"{sub['heures'].sum():.1f} h")
         c2.metric("📅 Activités",   len(sub))
@@ -771,7 +1067,6 @@ elif page == "📊 Statistiques":
 
         st.divider()
 
-        # Heures par mois
         sub = sub.copy()
         sub["mois"] = pd.to_datetime(sub["date"]).dt.strftime("%Y-%m")
         stats_mois = sub.groupby("mois")["heures"].sum().sort_index()
@@ -798,7 +1093,6 @@ elif page == "📊 Statistiques":
 elif page == "🏭 Plan Usine":
     st.header("🏭 Plan Usine")
 
-    # ---- Définition des zones ----
     ZONES = {
         "01": (1011,180,1098,244),  "02": (945,180,1009,242),
         "03": (935,242,1009,293),   "04": (1234,129,1310,208),
@@ -825,7 +1119,6 @@ elif page == "🏭 Plan Usine":
         "117": (663,680,791,766),
     }
 
-    # ---- Nombre d'activités par zone (via scan descriptions) ----
     @st.cache_data(ttl=60)
     def compter_par_zone(machines: tuple) -> dict:
         out = {}
@@ -838,17 +1131,14 @@ elif page == "🏭 Plan Usine":
 
     counts = compter_par_zone(tuple(ZONES.keys()))
 
-    # ---- Sélection rapide sans cliquer sur le plan ----
     c1, c2 = st.columns([3, 2])
     with c1:
         st.caption("Clique une zone sur le plan, ou sélectionne directement :")
     with c2:
-        # Trier par numérique quand possible
         def sort_key(m):
             try:  return (0, int(m))
             except: return (1, m)
         zones_options = sorted(ZONES.keys(), key=sort_key)
-        labels = [f"Zone {z}  ({counts.get(z,0)} act.)" for z in zones_options]
 
         choix = st.selectbox(
             "Zone",
@@ -861,7 +1151,6 @@ elif page == "🏭 Plan Usine":
         if choix:
             st.session_state.zone_selectionnee = choix
 
-    # ---- Image cliquable ----
     try:
         image = Image.open("Plan_usine.png")
         click = streamlit_image_coordinates(image, key="plan", width=image.width)
@@ -878,7 +1167,6 @@ elif page == "🏭 Plan Usine":
     except FileNotFoundError:
         st.error("❌ Fichier `Plan_usine.png` introuvable")
 
-    # ---- Affichage activités de la zone sélectionnée ----
     zone = st.session_state.zone_selectionnee
     if zone:
         st.divider()
@@ -910,7 +1198,17 @@ elif page == "🏭 Plan Usine":
                             )
                             with st.expander("Voir détails"):
                                 st.code(row["description"])
-                                imgs = parse_images(row.get("image_url"))
+                                record_id = row["id"]
+                                imgs_files = row.get("images", []) or []
+                                if isinstance(imgs_files, str):
+                                    imgs_files = [imgs_files] if imgs_files else []
+                                imgs = [
+                                    f"{POCKETBASE_URL}/api/files/agenda/{record_id}/{n}"
+                                    for n in imgs_files
+                                ]
+                                imgs += parse_images(row.get("image_url"))
+                                seen = set()
+                                imgs = [x for x in imgs if not (x in seen or seen.add(x))]
                                 if imgs:
                                     cols = st.columns(min(len(imgs), 4))
                                     for i, img in enumerate(imgs):
