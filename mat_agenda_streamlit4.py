@@ -1,21 +1,22 @@
 """
-MAT AGENDA — version avec Cloudflare R2 pour le stockage des images
-====================================================================
-Changements par rapport à la version Supabase Storage :
-- Les images sont uploadées vers Cloudflare R2 (10 GB gratuits)
-- Supabase reste utilisé pour la DB (tables agenda et taches)
-- Nouvelle fonction upload_images() utilisant boto3
-- Nouvelle fonction delete_image_from_r2() pour le nettoyage
-
-Prérequis : pip install boto3
+MAT AGENDA — version Streamlit optimisée
+========================================
+Améliorations par rapport à la version précédente :
+- Cache Supabase (ttl=60s) + bouton actualiser => gros gain de vitesse
+- Clés API sortables dans st.secrets
+- Tâches à prévoir dans une table dédiée `taches` (plus de perte de données)
+- Popups (st.dialog) pour Ajout / Édition / Suppression / Zoom image
+- Confirmation avant suppression
+- Filtres liste : texte + technicien + plage de dates + pagination
+- Export CSV
+- Stats enrichies (heures par technicien + par mois)
+- Plan usine : tooltip + badges de comptage par zone
+- Gestion d'erreurs sur les appels Supabase
 """
 
 import json
 from datetime import datetime, time, date, timedelta
-from uuid import uuid4
 
-import boto3
-from botocore.config import Config
 import pandas as pd
 import requests
 import streamlit as st
@@ -30,53 +31,43 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 
 st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
 
-# ---- Secrets ----
+# ---- Secrets (Streamlit Cloud → Settings → Secrets) ----
+# Fichier .streamlit/secrets.toml (exemple) :
+#   SUPABASE_URL = "https://..."
+#   SUPABASE_KEY = "sb_publishable_..."
+#   PUSHOVER_TOKEN = "..."
+#   PUSHOVER_USER  = "..."
 try:
     SUPABASE_URL   = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY   = st.secrets["SUPABASE_KEY"]
     PUSHOVER_TOKEN = st.secrets.get("PUSHOVER_TOKEN", "")
     PUSHOVER_USER  = st.secrets.get("PUSHOVER_USER",  "")
-    # ---- NOUVEAU : Cloudflare R2 ----
-    R2_ACCESS_KEY  = st.secrets["R2_ACCESS_KEY"]
-    R2_SECRET_KEY  = st.secrets["R2_SECRET_KEY"]
-    R2_ENDPOINT    = st.secrets["R2_ENDPOINT"]
-    R2_BUCKET      = st.secrets["R2_BUCKET"]
-    R2_PUBLIC_URL  = st.secrets["R2_PUBLIC_URL"].rstrip("/")
-except (KeyError, FileNotFoundError) as e:
-    st.error(f"⚠️ Secret manquant : {e}. Vérifie .streamlit/secrets.toml")
-    st.stop()
+except (KeyError, FileNotFoundError):
+    # Fallback dev — à RETIRER une fois les secrets configurés
+    SUPABASE_URL   = "https://quamffmaxqhhtyxworou.supabase.co"
+    SUPABASE_KEY   = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
+    PUSHOVER_TOKEN = "a6vqbmhhjyzu19ay371qxhmmwuwnpp"
+    PUSHOVER_USER  = "uykkgtvss4kmbyuscgce5xqgdb5ufy"
 
 APP_URL = "https://mat-agenda-web2-mngwrfjcalzf3kbpdvd99n.streamlit.app"
 
 TECHNICIENS = ["MAT", "Sébastien"]
 
+# Couleur par défaut par technicien
 COULEUR_TECH = {
     "MAT":       "#00ff9c",
     "Sébastien": "#00ffee",
 }
 
 # =========================================================
-# CLIENTS
+# CLIENT SUPABASE
 # =========================================================
 
 @st.cache_resource
 def get_supabase():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
-@st.cache_resource
-def get_r2_client():
-    """Client S3 pour Cloudflare R2 (R2 est compatible S3)."""
-    return boto3.client(
-        "s3",
-        endpoint_url=R2_ENDPOINT,
-        aws_access_key_id=R2_ACCESS_KEY,
-        aws_secret_access_key=R2_SECRET_KEY,
-        config=Config(signature_version="s3v4"),
-        region_name="auto",
-    )
-
 supabase = get_supabase()
-r2 = get_r2_client()
 
 # =========================================================
 # STYLE
@@ -120,6 +111,7 @@ def calc_heures(row):
         return 0
 
 def send_push(desc, date_str, debut, fin, tech):
+    """Envoi notification Pushover (non bloquant — on ignore les erreurs)."""
     if not PUSHOVER_TOKEN or not PUSHOVER_USER:
         return
     try:
@@ -139,6 +131,7 @@ def send_push(desc, date_str, debut, fin, tech):
         pass
 
 def parse_images(raw):
+    """Retourne toujours une liste d'URL d'images."""
     if not raw:
         return []
     if isinstance(raw, list):
@@ -154,60 +147,17 @@ def parse_images(raw):
             return [raw]
     return []
 
-# =========================================================
-# 🆕 GESTION CLOUDFLARE R2
-# =========================================================
-
 def upload_images(files):
-    """
-    Upload une liste de fichiers UploadedFile vers Cloudflare R2.
-    Retourne la liste des URLs publiques.
-    """
+    """Upload une liste de fichiers UploadedFile vers Supabase Storage."""
     urls = []
     for f in files or []:
         try:
-            # Nom unique : timestamp + uuid + nom original (pour éviter les collisions)
-            ext = f.name.rsplit(".", 1)[-1].lower() if "." in f.name else "jpg"
-            file_key = f"{int(datetime.now().timestamp()*1000)}_{uuid4().hex[:8]}.{ext}"
-            
-            # Détection du content type pour que les images s'affichent correctement
-            content_type = {
-                "jpg": "image/jpeg",
-                "jpeg": "image/jpeg",
-                "png": "image/png",
-                "gif": "image/gif",
-                "webp": "image/webp",
-            }.get(ext, "application/octet-stream")
-            
-            # Upload vers R2
-            r2.put_object(
-                Bucket=R2_BUCKET,
-                Key=file_key,
-                Body=f.getvalue(),
-                ContentType=content_type,
-            )
-            
-            # URL publique via le subdomain R2.dev
-            url = f"{R2_PUBLIC_URL}/{file_key}"
-            urls.append(url)
+            file_name = f"{int(datetime.now().timestamp()*1000)}_{f.name}"
+            supabase.storage.from_("agenda-images").upload(file_name, f.getvalue())
+            urls.append(supabase.storage.from_("agenda-images").get_public_url(file_name))
         except Exception as e:
             st.error(f"Erreur upload {f.name} : {e}")
     return urls
-
-def delete_image_from_r2(url):
-    """
-    Supprime une image de R2 à partir de son URL publique.
-    Utilisé quand on supprime une activité ou décoche une image en édition.
-    """
-    if not url or not url.startswith(R2_PUBLIC_URL):
-        return  # Pas une URL R2 (peut-être une vieille URL Supabase)
-    try:
-        # Extraire la clé depuis l'URL : R2_PUBLIC_URL/file_key
-        file_key = url.replace(R2_PUBLIC_URL + "/", "")
-        r2.delete_object(Bucket=R2_BUCKET, Key=file_key)
-    except Exception as e:
-        # On log mais on ne bloque pas — la donnée est plus importante que le nettoyage
-        print(f"[Warn] Impossible de supprimer {url} de R2 : {e}")
 
 # =========================================================
 # ACCÈS DATA (avec cache)
@@ -229,6 +179,7 @@ def lire_activites() -> pd.DataFrame:
 
 @st.cache_data(ttl=30, show_spinner=False)
 def lire_taches() -> list[dict]:
+    """Lit les tâches depuis la table dédiée `taches`."""
     try:
         resp = (supabase.table("taches")
                 .select("*")
@@ -320,16 +271,9 @@ def dlg_confirm_delete(activite_id):
     c1, c2 = st.columns(2)
     if c1.button("✅ Oui, supprimer", width="stretch"):
         try:
-            # 🆕 Récupérer les images AVANT de supprimer pour pouvoir les nettoyer de R2
-            row_resp = supabase.table("agenda").select("image_url").eq("id", activite_id).execute()
-            if row_resp.data:
-                imgs_a_supprimer = parse_images(row_resp.data[0].get("image_url"))
-                for img_url in imgs_a_supprimer:
-                    delete_image_from_r2(img_url)
-            
-            # Suppression de l'activité dans la DB
             supabase.table("agenda").delete().eq("id", activite_id).execute()
             invalider_cache()
+            # Reset du calendrier : nouvelle clé → nouveau composant → eventClick vide
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
             st.session_state.pop("last_event_click", None)
             st.success("Activité supprimée")
@@ -393,12 +337,6 @@ def _form_activite(row=None):
             st.error("L'heure de fin doit être après l'heure de début")
             return
 
-        # 🆕 Nettoyage : supprimer de R2 les images décochées
-        if is_edit:
-            images_supprimees = [img for img in images_existantes if img not in images_a_garder]
-            for img_url in images_supprimees:
-                delete_image_from_r2(img_url)
-
         urls = images_a_garder + upload_images(nouvelles_images)
 
         payload = {
@@ -444,6 +382,7 @@ def dlg_edit(row):
 def dlg_taches():
     taches = lire_taches()
 
+    # Ajout rapide
     with st.form("form_ajout_tache", clear_on_submit=True):
         c1, c2, c3 = st.columns([5, 2, 1])
         texte    = c1.text_input("Nouvelle tâche", label_visibility="collapsed",
@@ -469,10 +408,12 @@ def dlg_taches():
         st.info("Aucune tâche. Ajoute-en une ci-dessus 👆")
         return
 
+    # Filtre affichage
     show_done = st.checkbox("Afficher aussi les tâches terminées",
                             value=False, key="show_done_taches")
     taches_aff = taches if show_done else [t for t in taches if not t.get("done")]
 
+    # Groupement par priorité (haute en haut)
     ordre_prio = {"haute": 0, "normale": 1, "basse": 2}
     taches_aff = sorted(taches_aff,
                         key=lambda t: (t.get("done", False),
@@ -516,8 +457,15 @@ def dlg_taches():
     st.caption(f"📌 {nb_restant} tâche(s) en cours • {len(taches)} au total")
 
 # =========================================================
-# GESTION POPUPS DÉCLENCHÉES
+# GESTION POPUPS DÉCLENCHÉES (UN SEUL À LA FOIS)
 # =========================================================
+# Streamlit n'autorise qu'UN seul st.dialog ouvert par run.
+# Priorité : zoom > confirm delete > edit > ajout > détails.
+#
+# IMPORTANT : on POP la clé dès l'ouverture du popup.
+# - Si le user clique sur la croix/ESC : on_dismiss="rerun" relance → clé absente → popup fermé ✅
+# - Si le user clique sur un bouton interne : le handler fait son job puis st.rerun()
+#   (et peut remettre une autre clé ex: edit_row si on clique "Modifier")
 
 _dialog_opened = False
 
@@ -575,6 +523,7 @@ with st.sidebar:
         st.toast("Données rechargées", icon="✅")
         st.rerun()
 
+    # Indicateur rapide tâches non terminées
     try:
         nb_open = sum(1 for t in lire_taches() if not t.get("done"))
         if nb_open:
@@ -598,6 +547,7 @@ if page == "📅 Calendrier":
     if df.empty:
         st.info("Aucune activité. Clique sur ➕ Ajouter activité dans la barre latérale.")
     else:
+        # Filtre technicien rapide
         c1, _ = st.columns([2, 6])
         tech_filter = c1.selectbox(
             "Filtrer par technicien",
@@ -619,6 +569,8 @@ if page == "📅 Calendrier":
                 "color": row.get("color") or COULEUR_TECH.get(row.get("technicien"), "#00ff9c"),
             })
 
+        # Clé dynamique : change après chaque suppression pour réinitialiser
+        # l'état interne du composant calendar (sinon l'eventClick reste "collé")
         cal_key = f"calendar_{st.session_state.get('calendar_version', 0)}"
 
         state = calendar(
@@ -643,8 +595,10 @@ if page == "📅 Calendrier":
             key=cal_key,
         )
 
+        # Éviter de retraiter le même clic en boucle : on mémorise le dernier traité
         if state and state.get("eventClick"):
             event_click = state["eventClick"]
+            # On utilise le timestamp de l'event comme identifiant unique du clic
             click_signature = f"{event_click['event']['id']}_{event_click.get('view', {}).get('currentStart', '')}"
 
             if st.session_state.get("last_event_click") != click_signature:
@@ -665,6 +619,7 @@ elif page == "📂 Liste":
     if df.empty:
         st.info("Aucune activité")
     else:
+        # --- FILTRES ---
         with st.expander("🔍 Filtres", expanded=True):
             c1, c2, c3 = st.columns(3)
             search_text = c1.text_input(
@@ -708,6 +663,7 @@ elif page == "📂 Liste":
         st.session_state.filter_date_debut = date_debut
         st.session_state.filter_date_fin   = date_fin
 
+        # --- APPLICATION DES FILTRES ---
         sub = df.copy()
         if search_text:
             for mot in search_text.split():
@@ -720,6 +676,7 @@ elif page == "📂 Liste":
             (pd.to_datetime(sub["date"]).dt.date <= date_fin)
         ]
 
+        # --- HEADER RÉSULTATS + EXPORT ---
         c1, c2, c3 = st.columns([3, 2, 2])
         c1.caption(f"📊 **{len(sub)}** activité(s) • "
                    f"⏱ **{round(sub['heures'].sum(), 1)} h** cumulées")
@@ -734,6 +691,7 @@ elif page == "📂 Liste":
                 width="stretch"
             )
 
+        # --- PAGINATION ---
         if sub.empty:
             st.info("Aucune activité trouvée avec ces filtres")
         else:
@@ -757,6 +715,7 @@ elif page == "📂 Liste":
             debut_idx = (st.session_state.page_num - 1) * PAR_PAGE
             fin_idx   = debut_idx + PAR_PAGE
 
+            # --- AFFICHAGE ---
             for _, row in sub.iloc[debut_idx:fin_idx].iterrows():
                 with st.container():
                     st.markdown('<div class="activity-card">', unsafe_allow_html=True)
@@ -802,6 +761,7 @@ elif page == "📊 Statistiques":
         )
         sub = df if tech_filter == "Tous" else df[df["technicien"] == tech_filter]
 
+        # Metrics
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("⏱ Temps total", f"{sub['heures'].sum():.1f} h")
         c2.metric("📅 Activités",   len(sub))
@@ -811,6 +771,7 @@ elif page == "📊 Statistiques":
 
         st.divider()
 
+        # Heures par mois
         sub = sub.copy()
         sub["mois"] = pd.to_datetime(sub["date"]).dt.strftime("%Y-%m")
         stats_mois = sub.groupby("mois")["heures"].sum().sort_index()
@@ -837,6 +798,7 @@ elif page == "📊 Statistiques":
 elif page == "🏭 Plan Usine":
     st.header("🏭 Plan Usine")
 
+    # ---- Définition des zones ----
     ZONES = {
         "01": (1011,180,1098,244),  "02": (945,180,1009,242),
         "03": (935,242,1009,293),   "04": (1234,129,1310,208),
@@ -863,6 +825,7 @@ elif page == "🏭 Plan Usine":
         "117": (663,680,791,766),
     }
 
+    # ---- Nombre d'activités par zone (via scan descriptions) ----
     @st.cache_data(ttl=60)
     def compter_par_zone(machines: tuple) -> dict:
         out = {}
@@ -875,14 +838,17 @@ elif page == "🏭 Plan Usine":
 
     counts = compter_par_zone(tuple(ZONES.keys()))
 
+    # ---- Sélection rapide sans cliquer sur le plan ----
     c1, c2 = st.columns([3, 2])
     with c1:
         st.caption("Clique une zone sur le plan, ou sélectionne directement :")
     with c2:
+        # Trier par numérique quand possible
         def sort_key(m):
             try:  return (0, int(m))
             except: return (1, m)
         zones_options = sorted(ZONES.keys(), key=sort_key)
+        labels = [f"Zone {z}  ({counts.get(z,0)} act.)" for z in zones_options]
 
         choix = st.selectbox(
             "Zone",
@@ -895,6 +861,7 @@ elif page == "🏭 Plan Usine":
         if choix:
             st.session_state.zone_selectionnee = choix
 
+    # ---- Image cliquable ----
     try:
         image = Image.open("Plan_usine.png")
         click = streamlit_image_coordinates(image, key="plan", width=image.width)
@@ -911,6 +878,7 @@ elif page == "🏭 Plan Usine":
     except FileNotFoundError:
         st.error("❌ Fichier `Plan_usine.png` introuvable")
 
+    # ---- Affichage activités de la zone sélectionnée ----
     zone = st.session_state.zone_selectionnee
     if zone:
         st.divider()
