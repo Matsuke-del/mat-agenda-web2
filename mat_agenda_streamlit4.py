@@ -35,10 +35,10 @@ st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
 #   PUSHOVER_TOKEN           = "..."   (optionnel)
 #   PUSHOVER_USER            = "..."   (optionnel)
 try:
-    POCKETBASE_URL           = st.secrets["POCKETBASE_URL"].rstrip("/")
-    POCKETBASE_USER_EMAIL    = st.secrets["POCKETBASE_USER_EMAIL"]
-    POCKETBASE_USER_PASSWORD = st.secrets["POCKETBASE_USER_PASSWORD"]
-    APP_PASSWORD             = st.secrets["APP_PASSWORD"]
+    POCKETBASE_URL           = st.secrets["https://current-executive-voip-recorders.trycloudflare.com"].rstrip("/")
+    POCKETBASE_USER_EMAIL    = st.secrets["tchama.anli@outlook.fr"]
+    POCKETBASE_USER_PASSWORD = st.secrets["Rachka13072018"]
+    APP_PASSWORD             = st.secrets["matagenda2026"]
     PUSHOVER_TOKEN           = st.secrets.get("PUSHOVER_TOKEN", "")
     PUSHOVER_USER            = st.secrets.get("PUSHOVER_USER",  "")
 except (KeyError, FileNotFoundError):
