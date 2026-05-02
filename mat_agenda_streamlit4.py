@@ -1,29 +1,25 @@
 """
-MAT AGENDA — version Streamlit optimisée
-========================================
-Améliorations :
-- Cache Supabase (ttl=60s) + bouton actualiser
-- Clés API dans st.secrets
-- Tâches dans une table dédiée `taches`
-- Popups (st.dialog) pour Ajout / Édition / Suppression / Zoom image
-- Confirmation avant suppression
-- Filtres liste : texte + technicien + plage de dates + pagination
-- Export CSV
-- Stats enrichies (heures par technicien + par mois)
-- Plan usine : tooltip + badges de comptage par zone
-- Gestion d'erreurs sur les appels Supabase
-- 🆕 Compression automatique des images à l'upload (gain typique 80-95%)
-- 🆕 Outil de recompression des images existantes (bouton dans sidebar)
+MAT AGENDA — version avec Cloudflare R2 pour le stockage des images
+====================================================================
+Changements par rapport à la version Supabase Storage :
+- Les images sont uploadées vers Cloudflare R2 (10 GB gratuits)
+- Supabase reste utilisé pour la DB (tables agenda et taches)
+- Nouvelle fonction upload_images() utilisant boto3
+- Nouvelle fonction delete_image_from_r2() pour le nettoyage
+
+Prérequis : pip install boto3
 """
 
-import io
 import json
 from datetime import datetime, time, date, timedelta
+from uuid import uuid4
 
+import boto3
+from botocore.config import Config
 import pandas as pd
 import requests
 import streamlit as st
-from PIL import Image, ImageOps
+from PIL import Image
 from supabase import create_client
 from streamlit_calendar import calendar
 from streamlit_image_coordinates import streamlit_image_coordinates
@@ -34,38 +30,53 @@ from streamlit_image_coordinates import streamlit_image_coordinates
 
 st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
 
+# ---- Secrets ----
 try:
     SUPABASE_URL   = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY   = st.secrets["SUPABASE_KEY"]
     PUSHOVER_TOKEN = st.secrets.get("PUSHOVER_TOKEN", "")
     PUSHOVER_USER  = st.secrets.get("PUSHOVER_USER",  "")
-except (KeyError, FileNotFoundError):
-    SUPABASE_URL   = "https://quamffmaxqhhtyxworou.supabase.co"
-    SUPABASE_KEY   = "sb_publishable_zKt7ObrIa8kkHXjlvhk4tw_SUetSTZG"
-    PUSHOVER_TOKEN = "a6vqbmhhjyzu19ay371qxhmmwuwnpp"
-    PUSHOVER_USER  = "uykkgtvss4kmbyuscgce5xqgdb5ufy"
+    # ---- NOUVEAU : Cloudflare R2 ----
+    R2_ACCESS_KEY  = st.secrets["R2_ACCESS_KEY"]
+    R2_SECRET_KEY  = st.secrets["R2_SECRET_KEY"]
+    R2_ENDPOINT    = st.secrets["R2_ENDPOINT"]
+    R2_BUCKET      = st.secrets["R2_BUCKET"]
+    R2_PUBLIC_URL  = st.secrets["R2_PUBLIC_URL"].rstrip("/")
+except (KeyError, FileNotFoundError) as e:
+    st.error(f"⚠️ Secret manquant : {e}. Vérifie .streamlit/secrets.toml")
+    st.stop()
 
 APP_URL = "https://mat-agenda-web2-mngwrfjcalzf3kbpdvd99n.streamlit.app"
 
 TECHNICIENS = ["MAT", "Sébastien"]
-COULEUR_TECH = {"MAT": "#00ff9c", "Sébastien": "#00ffee"}
 
-BUCKET = "agenda-images"
-
-# Paramètres compression images
-COMPRESS_MAX_DIM    = 1600
-COMPRESS_QUALITY    = 85
-COMPRESS_SKIP_KO    = 300
+COULEUR_TECH = {
+    "MAT":       "#00ff9c",
+    "Sébastien": "#00ffee",
+}
 
 # =========================================================
-# CLIENT SUPABASE
+# CLIENTS
 # =========================================================
 
 @st.cache_resource
 def get_supabase():
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
+@st.cache_resource
+def get_r2_client():
+    """Client S3 pour Cloudflare R2 (R2 est compatible S3)."""
+    return boto3.client(
+        "s3",
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY,
+        aws_secret_access_key=R2_SECRET_KEY,
+        config=Config(signature_version="s3v4"),
+        region_name="auto",
+    )
+
 supabase = get_supabase()
+r2 = get_r2_client()
 
 # =========================================================
 # STYLE
@@ -144,80 +155,59 @@ def parse_images(raw):
     return []
 
 # =========================================================
-# COMPRESSION D'IMAGES
+# 🆕 GESTION CLOUDFLARE R2
 # =========================================================
 
-def compresser_bytes(content_bytes,
-                     max_dim=COMPRESS_MAX_DIM,
-                     quality=COMPRESS_QUALITY):
-    """Prend des bytes d'image, retourne des bytes JPEG compressés.
-    Une photo 5 Mo → typiquement 200-400 Ko sans perte visible."""
-    img = Image.open(io.BytesIO(content_bytes))
-    try:
-        img = ImageOps.exif_transpose(img)
-    except Exception:
-        pass
-    if img.mode != "RGB":
-        img = img.convert("RGB")
-    w, h = img.size
-    if max(w, h) > max_dim:
-        ratio = max_dim / max(w, h)
-        img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=quality, optimize=True, progressive=True)
-    return buf.getvalue()
-
 def upload_images(files):
-    """Upload des fichiers UploadedFile vers Supabase Storage AVEC compression."""
+    """
+    Upload une liste de fichiers UploadedFile vers Cloudflare R2.
+    Retourne la liste des URLs publiques.
+    """
     urls = []
     for f in files or []:
         try:
-            content_origine = f.getvalue()
-            taille_o = len(content_origine)
-
-            content = compresser_bytes(content_origine)
-            taille_n = len(content)
-
-            base = f.name.rsplit(".", 1)[0]
-            file_name = f"{int(datetime.now().timestamp()*1000)}_{base}.jpg"
-
-            supabase.storage.from_(BUCKET).upload(
-                file_name, content,
-                file_options={"content-type": "image/jpeg"}
+            # Nom unique : timestamp + uuid + nom original (pour éviter les collisions)
+            ext = f.name.rsplit(".", 1)[-1].lower() if "." in f.name else "jpg"
+            file_key = f"{int(datetime.now().timestamp()*1000)}_{uuid4().hex[:8]}.{ext}"
+            
+            # Détection du content type pour que les images s'affichent correctement
+            content_type = {
+                "jpg": "image/jpeg",
+                "jpeg": "image/jpeg",
+                "png": "image/png",
+                "gif": "image/gif",
+                "webp": "image/webp",
+            }.get(ext, "application/octet-stream")
+            
+            # Upload vers R2
+            r2.put_object(
+                Bucket=R2_BUCKET,
+                Key=file_key,
+                Body=f.getvalue(),
+                ContentType=content_type,
             )
-            urls.append(supabase.storage.from_(BUCKET).get_public_url(file_name))
-
-            ratio = (1 - taille_n / taille_o) * 100 if taille_o else 0
-            st.toast(
-                f"📦 {f.name} : {taille_o//1024} Ko → {taille_n//1024} Ko (-{ratio:.0f}%)",
-                icon="✅"
-            )
+            
+            # URL publique via le subdomain R2.dev
+            url = f"{R2_PUBLIC_URL}/{file_key}"
+            urls.append(url)
         except Exception as e:
             st.error(f"Erreur upload {f.name} : {e}")
     return urls
 
-def extraire_nom_fichier(url):
-    """Extrait le nom de fichier dans le bucket à partir d'une URL publique."""
-    needle = "/object/public/" + BUCKET + "/"
-    if needle in url:
-        return url.split(needle)[-1].split("?")[0]
-    return None
-
-def collecter_toutes_images_supabase():
-    """Récupère toutes les URL d'images uniques depuis la table agenda."""
+def delete_image_from_r2(url):
+    """
+    Supprime une image de R2 à partir de son URL publique.
+    Utilisé quand on supprime une activité ou décoche une image en édition.
+    """
+    if not url or not url.startswith(R2_PUBLIC_URL):
+        return  # Pas une URL R2 (peut-être une vieille URL Supabase)
     try:
-        resp = supabase.table("agenda").select("id, image_url").execute()
-        activites = resp.data or []
+        # Extraire la clé depuis l'URL : R2_PUBLIC_URL/file_key
+        file_key = url.replace(R2_PUBLIC_URL + "/", "")
+        r2.delete_object(Bucket=R2_BUCKET, Key=file_key)
     except Exception as e:
-        st.error(f"Erreur lecture agenda : {e}")
-        return []
-
-    urls = set()
-    for act in activites:
-        for u in parse_images(act.get("image_url")):
-            if u.startswith("http"):
-                urls.add(u)
-    return list(urls)
+        # On log mais on ne bloque pas — la donnée est plus importante que le nettoyage
+        print(f"[Warn] Impossible de supprimer {url} de R2 : {e}")
 
 # =========================================================
 # ACCÈS DATA (avec cache)
@@ -275,7 +265,6 @@ def init_state():
         "zone_selectionnee": None,
         "calendar_version": 0,
         "last_event_click": None,
-        "show_recompress": False,
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -331,6 +320,14 @@ def dlg_confirm_delete(activite_id):
     c1, c2 = st.columns(2)
     if c1.button("✅ Oui, supprimer", width="stretch"):
         try:
+            # 🆕 Récupérer les images AVANT de supprimer pour pouvoir les nettoyer de R2
+            row_resp = supabase.table("agenda").select("image_url").eq("id", activite_id).execute()
+            if row_resp.data:
+                imgs_a_supprimer = parse_images(row_resp.data[0].get("image_url"))
+                for img_url in imgs_a_supprimer:
+                    delete_image_from_r2(img_url)
+            
+            # Suppression de l'activité dans la DB
             supabase.table("agenda").delete().eq("id", activite_id).execute()
             invalider_cache()
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
@@ -342,126 +339,8 @@ def dlg_confirm_delete(activite_id):
     if c2.button("❌ Annuler", width="stretch"):
         st.rerun()
 
-@st.dialog("📦 Recompresser les images existantes", width="large", on_dismiss="rerun")
-def dlg_recompress():
-    st.markdown(
-        "Cet outil **télécharge chaque image** de Supabase Storage, la recompresse, "
-        "et **remplace l'originale**. Gain typique : **80 à 95 %** d'espace."
-    )
-    st.warning(
-        "⚠️ **Action destructive** : les images originales sont écrasées. "
-        "Si tu veux garder une copie de sauvegarde, télécharge ton bucket "
-        "`agenda-images` depuis Supabase **avant** de lancer."
-    )
-
-    st.markdown("**Paramètres :**")
-    c1, c2, c3 = st.columns(3)
-    max_dim = c1.number_input("Taille max (px)", min_value=400, max_value=4000,
-                               value=COMPRESS_MAX_DIM, step=100)
-    quality = c2.slider("Qualité JPEG", min_value=50, max_value=95,
-                         value=COMPRESS_QUALITY)
-    skip_ko = c3.number_input("Skip si ≤ X Ko", min_value=0, max_value=2000,
-                               value=COMPRESS_SKIP_KO, step=50)
-
-    st.divider()
-
-    if st.button("🚀 Lancer la recompression", type="primary", width="stretch"):
-        with st.spinner("Récupération de la liste des images..."):
-            urls = collecter_toutes_images_supabase()
-
-        if not urls:
-            st.info("Aucune image à recompresser.")
-            return
-
-        st.write(f"📊 **{len(urls)} images** trouvées")
-
-        progress = st.progress(0, text="Démarrage...")
-        log_box  = st.empty()
-        logs = []
-
-        total_avant = 0
-        total_apres = 0
-        nb_ok, nb_skip, nb_err = 0, 0, 0
-
-        for i, url in enumerate(urls, 1):
-            nom = extraire_nom_fichier(url)
-            if not nom:
-                logs.append(f"⚠ URL non reconnue : {url}")
-                nb_err += 1
-                progress.progress(i / len(urls), text=f"{i}/{len(urls)}")
-                continue
-
-            try:
-                r = requests.get(url, timeout=30)
-                if r.status_code != 200:
-                    logs.append(f"❌ {nom} — HTTP {r.status_code}")
-                    nb_err += 1
-                    continue
-
-                content_origine = r.content
-                taille_o = len(content_origine)
-                total_avant += taille_o
-
-                if 0 < taille_o <= skip_ko * 1024:
-                    logs.append(f"⏭️ {nom} — déjà petit ({taille_o//1024} Ko)")
-                    total_apres += taille_o
-                    nb_skip += 1
-                    continue
-
-                content_nouveau = compresser_bytes(content_origine,
-                                                    max_dim=max_dim,
-                                                    quality=quality)
-                taille_n = len(content_nouveau)
-
-                if taille_n >= taille_o:
-                    logs.append(f"⏭️ {nom} — déjà optimisée")
-                    total_apres += taille_o
-                    nb_skip += 1
-                    continue
-
-                supabase.storage.from_(BUCKET).update(
-                    nom, content_nouveau,
-                    file_options={"content-type": "image/jpeg",
-                                  "x-upsert": "true"}
-                )
-
-                ratio = (1 - taille_n / taille_o) * 100
-                logs.append(f"✅ {nom}: {taille_o//1024} Ko → {taille_n//1024} Ko (-{ratio:.0f}%)")
-                total_apres += taille_n
-                nb_ok += 1
-
-            except Exception as e:
-                logs.append(f"❌ {nom} — {e}")
-                total_apres += taille_o if 'taille_o' in locals() else 0
-                nb_err += 1
-
-            progress.progress(i / len(urls), text=f"{i}/{len(urls)} — {nom[:40]}")
-            log_box.code("\n".join(logs[-12:]))
-
-        progress.progress(1.0, text="Terminé ✅")
-
-        st.divider()
-        st.success("✨ Recompression terminée !")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("✅ Recompressées", nb_ok)
-        c2.metric("⏭️ Skippées",      nb_skip)
-        c3.metric("❌ Erreurs",       nb_err)
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Avant", f"{total_avant/1024/1024:.1f} Mo")
-        c2.metric("Après", f"{total_apres/1024/1024:.1f} Mo")
-        if total_avant > 0:
-            gain_mo = (total_avant - total_apres) / 1024 / 1024
-            gain_pct = (1 - total_apres / total_avant) * 100
-            c3.metric("💰 Économisé", f"{gain_mo:.1f} Mo", f"-{gain_pct:.0f}%")
-
-        st.info("Pense à vérifier ton usage : Supabase → Settings → Usage")
-
-    if st.button("Fermer", width="stretch"):
-        st.rerun()
-
 def _form_activite(row=None):
-    """Formulaire partagé entre ajout et édition."""
+    """Formulaire partagé entre ajout et édition. row=None => ajout."""
     is_edit = row is not None
 
     default_date   = pd.to_datetime(row["date"]).date() if is_edit else date.today()
@@ -483,6 +362,7 @@ def _form_activite(row=None):
                          index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
     color = c2.color_picker("🎨 Couleur", default_color)
 
+    # Images existantes
     images_existantes = parse_images(row.get("image_url")) if is_edit else []
     images_a_garder = []
     if images_existantes:
@@ -496,13 +376,10 @@ def _form_activite(row=None):
                     images_a_garder.append(img)
 
     nouvelles_images = st.file_uploader(
-        "📤 Ajouter des images (compressées automatiquement)",
+        "📤 Ajouter des images",
         type=["png", "jpg", "jpeg"],
         accept_multiple_files=True,
-        key=f"uploader_{st.session_state.upload_key}",
-        help=f"Les images sont automatiquement redimensionnées à {COMPRESS_MAX_DIM}px max "
-             f"et converties en JPEG qualité {COMPRESS_QUALITY}. "
-             f"Gain typique : 80-95% d'espace."
+        key=f"uploader_{st.session_state.upload_key}"
     )
 
     st.divider()
@@ -515,6 +392,12 @@ def _form_activite(row=None):
         if h_fin <= h_debut:
             st.error("L'heure de fin doit être après l'heure de début")
             return
+
+        # 🆕 Nettoyage : supprimer de R2 les images décochées
+        if is_edit:
+            images_supprimees = [img for img in images_existantes if img not in images_a_garder]
+            for img_url in images_supprimees:
+                delete_image_from_r2(img_url)
 
         urls = images_a_garder + upload_images(nouvelles_images)
 
@@ -663,11 +546,6 @@ if not _dialog_opened and st.session_state.get("details_row"):
     dr = st.session_state.pop("details_row")
     dlg_details_activite(dr)
 
-if not _dialog_opened and st.session_state.get("show_recompress"):
-    _dialog_opened = True
-    st.session_state.pop("show_recompress", None)
-    dlg_recompress()
-
 # =========================================================
 # SIDEBAR
 # =========================================================
@@ -696,16 +574,6 @@ with st.sidebar:
         invalider_cache()
         st.toast("Données rechargées", icon="✅")
         st.rerun()
-
-    # Section maintenance / outils
-    with st.expander("🛠️ Maintenance"):
-        st.caption(
-            "Compresse les images déjà uploadées sur Supabase pour libérer "
-            "de l'espace de stockage. À lancer une seule fois."
-        )
-        if st.button("📦 Recompresser images existantes", width="stretch"):
-            st.session_state.show_recompress = True
-            st.rerun()
 
     try:
         nb_open = sum(1 for t in lire_taches() if not t.get("done"))
