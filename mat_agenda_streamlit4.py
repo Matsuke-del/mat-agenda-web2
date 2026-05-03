@@ -8,24 +8,24 @@ MAT AGENDA - version Streamlit (PocketBase backend)
 - Compression auto des images a l'upload
 - Tout le reste comme avant : calendrier, liste, stats, plan, taches
 """
- 
+
 import io
 import json
 from datetime import datetime, time, date
- 
+
 import pandas as pd
 import requests
 import streamlit as st
 from PIL import Image, ImageOps
 from streamlit_calendar import calendar
 from streamlit_image_coordinates import streamlit_image_coordinates
- 
+
 # =========================================================
 # CONFIG
 # =========================================================
- 
+
 st.set_page_config(page_title="MAT Agenda", layout="wide", page_icon="🧠")
- 
+
 # ---- Secrets (Streamlit Cloud > Settings > Secrets) ----
 # secrets.toml :
 #   POCKETBASE_URL           = "https://xxx.trycloudflare.com"
@@ -47,7 +47,7 @@ except (KeyError, FileNotFoundError):
         "```toml\n"
         'POCKETBASE_URL = "https://current-executive-voip-recorders.trycloudflare.com"\n'
         'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
-        'POCKETBASE_USER_PASSWORD = "Rachka13072018"\n'
+        'POCKETBASE_USER_PASSWORD = "B-yong2026"\n'
         'APP_PASSWORD = "matagenda2026"\n'
         "```"
     )
@@ -383,7 +383,11 @@ def upload_images_pocketbase(record_id, files):
 @st.cache_data(ttl=60, show_spinner="Chargement des activités...")
 def lire_activites() -> pd.DataFrame:
     try:
-        items = pb.list_all("agenda", sort="date,debut")
+        # On essaie avec le tri PocketBase, sinon on tri cote python
+        try:
+            items = pb.list_all("agenda", sort="date,debut")
+        except Exception:
+            items = pb.list_all("agenda")
     except Exception as e:
         st.error(f"Erreur lecture PocketBase (agenda) : {e}")
         return pd.DataFrame()
@@ -391,14 +395,50 @@ def lire_activites() -> pd.DataFrame:
     if not items:
         return pd.DataFrame()
     df = pd.DataFrame(items)
+    # Tri cote pandas (au cas ou le tri serveur a echoue)
+    if "date" in df.columns and "debut" in df.columns:
+        df = df.sort_values(["date", "debut"])
     df["heures"] = df.apply(calc_heures, axis=1)
     return df
 
 @st.cache_data(ttl=30, show_spinner=False)
 def lire_taches() -> list:
+    """Lit toutes les taches sans tri serveur (tri en local)."""
     try:
-        items = pb.list_all("taches", sort="done,-created")
-        return items or []
+        # Aucun parametre fancy : juste page/perPage
+        all_items = []
+        page = 1
+        while True:
+            r = requests.get(
+                f"{POCKETBASE_URL}/api/collections/taches/records",
+                params={"page": page, "perPage": 200},
+                headers=pb._headers(),
+                timeout=30
+            )
+            if r.status_code != 200:
+                st.error(
+                    f"Erreur lecture PocketBase (taches) : "
+                    f"{r.status_code} - {r.text[:200]}"
+                )
+                return []
+            data = r.json()
+            all_items.extend(data.get("items", []))
+            if page >= data.get("totalPages", 1):
+                break
+            page += 1
+
+        # Tri cote python : non terminees d'abord
+        def sort_key(t):
+            done = bool(t.get("done", False))
+            crea = t.get("created") or ""
+            return (done, crea)
+        all_items = sorted(all_items, key=sort_key, reverse=False)
+        # Inverser pour avoir les plus recentes en premier (parmi les non-terminees)
+        non_done = [t for t in all_items if not t.get("done")]
+        done = [t for t in all_items if t.get("done")]
+        non_done.reverse()
+        done.reverse()
+        return non_done + done
     except Exception as e:
         st.error(f"Erreur lecture PocketBase (taches) : {e}")
         return []
