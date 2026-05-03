@@ -45,9 +45,9 @@ except (KeyError, FileNotFoundError):
     st.error(
         "⚠️ Configuration manquante. Ajoute dans Streamlit Cloud > Settings > Secrets :\n\n"
         "```toml\n"
-        'POCKETBASE_URL = "https://pastor-blocks-fax-succeed.trycloudflare.com"\n'
+        'POCKETBASE_URL = "https://xxx.trycloudflare.com"\n'
         'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
-        'POCKETBASE_USER_PASSWORD = "B-yong2026"\n'
+        'POCKETBASE_USER_PASSWORD = "..."\n'
         'APP_PASSWORD = "matagenda2026"\n'
         "```"
     )
