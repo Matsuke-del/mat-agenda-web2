@@ -48,7 +48,7 @@ except (KeyError, FileNotFoundError):
         'POCKETBASE_URL = "https://current-executive-voip-recorders.trycloudflare.com"\n'
         'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
         'POCKETBASE_USER_PASSWORD = "B-yong2026"\n'
-        'APP_PASSWORD = "matagenda2026"\n'
+        'APP_PASSWORD = "agenda2026"\n'
         "```"
     )
     st.stop()
