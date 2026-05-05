@@ -5,3 +5,4 @@ pillow
 supabase
 streamlit-calendar
 streamlit-image-coordinates
+boto3
