@@ -45,7 +45,7 @@ except (KeyError, FileNotFoundError):
     st.error(
         "⚠️ Configuration manquante. Ajoute dans Streamlit Cloud > Settings > Secrets :\n\n"
         "```toml\n"
-        'POCKETBASE_URL = "https://xxx.trycloudflare.com"\n'
+        'POCKETBASE_URL = "https://faced-owner-gender-fighting.trycloudflare.com"\n'
         'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
         'POCKETBASE_USER_PASSWORD = "..."\n'
         'APP_PASSWORD = "matagenda2026"\n'
