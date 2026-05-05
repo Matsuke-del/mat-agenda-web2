@@ -221,21 +221,6 @@ except Exception as e:
 # =========================================================
 # STYLE
 # =========================================================
-@st.cache_data
-def _get_bg_base64(path: str) -> str:
-    """Encode l'image de fond en base64 (cache pour éviter de recharger à chaque rerun)."""
-    try:
-        return base64.b64encode(Path(path).read_bytes()).decode()
-    except FileNotFoundError:
-        return ""
-
-_bg_b64 = _get_bg_base64("Mat_agenda_logo.png")
-_bg_css = (
-    f'background-image: linear-gradient(rgba(11, 15, 20, 0.78), rgba(11, 15, 20, 0.85)), '
-    f'url("data:image/png;base64,{_bg_b64}");'
-    if _bg_b64 else "background: #0b0f14;"
-)
-
 st.markdown("""
 <style>
 .stApp { background:#0b0f14; color:#e5e7eb; }
