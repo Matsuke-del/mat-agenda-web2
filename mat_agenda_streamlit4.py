@@ -6,12 +6,15 @@ MAT AGENDA - version Streamlit (PocketBase backend)
 - Authentification automatique a PocketBase
 - Reecriture des URLs d'images locales 127.0.0.1 -> URL publique
 - Compression auto des images a l'upload
+- Image de fond personnalisee (Mat_agenda_logo.png a la racine)
 - Tout le reste comme avant : calendrier, liste, stats, plan, taches
 """
 
+import base64
 import io
 import json
 from datetime import datetime, time, date
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -45,7 +48,7 @@ except (KeyError, FileNotFoundError):
     st.error(
         "⚠️ Configuration manquante. Ajoute dans Streamlit Cloud > Settings > Secrets :\n\n"
         "```toml\n"
-        'POCKETBASE_URL = "https://faced-owner-gender-fighting.trycloudflare.com"\n'
+        'POCKETBASE_URL = "https://xxx.trycloudflare.com"\n'
         'POCKETBASE_USER_EMAIL = "app@matagenda.local"\n'
         'POCKETBASE_USER_PASSWORD = "..."\n'
         'APP_PASSWORD = "matagenda2026"\n'
@@ -61,6 +64,88 @@ COULEUR_TECH = {"MAT": "#00ff9c", "Sébastien": "#00ffee"}
 # Compression images
 COMPRESS_MAX_DIM = 1600
 COMPRESS_QUALITY = 85
+
+# =========================================================
+# STYLE (avec image de fond, applique avant le login)
+# =========================================================
+
+@st.cache_data
+def _get_bg_base64(path: str) -> str:
+    """Encode l'image de fond en base64 (cache pour eviter de recharger a chaque rerun)."""
+    try:
+        return base64.b64encode(Path(path).read_bytes()).decode()
+    except FileNotFoundError:
+        return ""
+
+_bg_b64 = _get_bg_base64("Mat_agenda_logo.png")
+_bg_css = (
+    f'background-image: linear-gradient(rgba(11, 15, 20, 0.78), rgba(11, 15, 20, 0.85)), '
+    f'url("data:image/png;base64,{_bg_b64}");'
+    if _bg_b64 else "background: #0b0f14;"
+)
+
+st.markdown(f"""
+<style>
+.stApp {{
+    {_bg_css}
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: #e5e7eb;
+}}
+
+/* Sidebar avec un fond legerement plus opaque pour la lisibilite */
+[data-testid="stSidebar"] {{
+    background: rgba(11, 15, 20, 0.92);
+    backdrop-filter: blur(6px);
+    border-right: 1px solid rgba(239, 68, 68, 0.25);
+}}
+
+h1, h2, h3 {{
+    color: #00ffee;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}}
+
+.stButton>button {{
+    background: rgba(17, 24, 39, 0.85);
+    color: #00ff9c;
+    border: 1px solid #00ff9c;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+}}
+.stButton>button:hover {{
+    background: #00ff9c;
+    color: black;
+}}
+
+[data-testid="stMetricValue"] {{ color: #00ff9c; }}
+
+.activity-card {{
+    background: rgba(17, 24, 39, 0.88);
+    border-left: 4px solid #00ff9c;
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+}}
+
+/* Conteneurs d'expanders et formulaires plus lisibles sur l'image */
+[data-testid="stExpander"], [data-testid="stForm"] {{
+    background: rgba(17, 24, 39, 0.75);
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+}}
+
+/* Calendrier : fond legerement opaque pour qu'il reste lisible */
+.fc {{
+    background: rgba(11, 15, 20, 0.85);
+    border-radius: 8px;
+    padding: 8px;
+    backdrop-filter: blur(4px);
+}}
+</style>
+""", unsafe_allow_html=True)
 
 # =========================================================
 # ECRAN DE LOGIN
@@ -217,27 +302,6 @@ except Exception as e:
         st.session_state.auth_ok = False
         st.rerun()
     st.stop()
-
-# =========================================================
-# STYLE
-# =========================================================
-st.markdown("""
-<style>
-.stApp { background:#0b0f14; color:#e5e7eb; }
-h1, h2, h3 { color:#00ffee; }
-.stButton>button {
-    background:#111827; color:#00ff9c;
-    border:1px solid #00ff9c; border-radius:8px;
-}
-.stButton>button:hover { background:#00ff9c; color:black; }
-[data-testid="stMetricValue"] { color:#00ff9c; }
-.activity-card {
-    background:#111827;
-    border-left:4px solid #00ff9c;
-    padding:12px; margin:8px 0; border-radius:8px;
-}
-</style>
-""", unsafe_allow_html=True)
 
 # =========================================================
 # HELPERS
