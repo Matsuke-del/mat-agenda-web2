@@ -79,7 +79,7 @@ def _get_bg_base64(path: str) -> str:
 
 _bg_b64 = _get_bg_base64("Mat_agenda_logo.png")
 _bg_css = (
-    f'background-image: linear-gradient(rgba(11, 15, 20, 0.58), rgba(11, 15, 20, 0.65)), '
+    f'background-image: linear-gradient(rgba(11, 15, 20, 0.50), rgba(11, 15, 20, 0.60)), '
     f'url("data:image/png;base64,{_bg_b64}");'
     if _bg_b64 else "background: #0b0f14;"
 )
