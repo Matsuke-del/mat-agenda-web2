@@ -1056,20 +1056,30 @@ elif page == "📂 Liste":
         st.session_state.filter_date_fin   = date_fin
 
         sub = df.copy()
+
+        # --- Filtres ---
         if search_text:
             for mot in search_text.split():
                 sub = sub[sub["description"].astype(str)
                          .str.contains(mot, case=False, na=False)]
+
         if tech_filter != "Tous":
             sub = sub[sub["technicien"] == tech_filter]
+
         sub = sub[
             (pd.to_datetime(sub["date"]).dt.date >= date_debut) &
             (pd.to_datetime(sub["date"]).dt.date <= date_fin)
         ]
 
+        # --- TRI CHRONOLOGIQUE DÉCROISSANT ---
+        sub = sub.sort_values(by=["date", "debut"], ascending=False)
+
+        # --- Résumé ---
         c1, c2, c3 = st.columns([3, 2, 2])
-        c1.caption(f"📊 **{len(sub)}** activité(s) • "
-                   f"⏱ **{round(sub['heures'].sum(), 1)} h** cumulées")
+        c1.caption(
+            f"📊 **{len(sub)}** activité(s) • "
+            f"⏱ **{round(sub['heures'].sum(), 1)} h** cumulées"
+        )
 
         if not sub.empty:
             csv = sub.drop(columns=["heures", "images"], errors="ignore").to_csv(index=False)
@@ -1092,11 +1102,13 @@ elif page == "📂 Liste":
             if c1.button("⬅️ Précédent", disabled=st.session_state.page_num <= 1):
                 st.session_state.page_num -= 1
                 st.rerun()
+
             c2.markdown(
                 f"<p style='text-align:center'>Page "
                 f"<b>{st.session_state.page_num}</b> / {nb_pages}</p>",
                 unsafe_allow_html=True
             )
+
             if c3.button("Suivant ➡️", disabled=st.session_state.page_num >= nb_pages):
                 st.session_state.page_num += 1
                 st.rerun()
@@ -1108,6 +1120,7 @@ elif page == "📂 Liste":
                 with st.container():
                     st.markdown('<div class="activity-card">', unsafe_allow_html=True)
                     c1, c2, c3 = st.columns([7, 1, 1])
+
                     with c1:
                         st.markdown(
                             f"**📅 {format_date_fr(row['date'])}** • "
@@ -1117,16 +1130,18 @@ elif page == "📂 Liste":
                         )
                         with st.expander("Voir détails"):
                             st.code(row["description"])
-                            # Images du champ "images" PocketBase
+
                             record_id = row["id"]
                             imgs_files = row.get("images", []) or []
                             if isinstance(imgs_files, str):
                                 imgs_files = [imgs_files] if imgs_files else []
+
                             imgs = [
                                 f"{POCKETBASE_URL}/api/files/agenda/{record_id}/{n}"
                                 for n in imgs_files
                             ]
                             imgs += parse_images(row.get("image_url"))
+
                             seen = set()
                             imgs = [x for x in imgs if not (x in seen or seen.add(x))]
 
@@ -1134,14 +1149,17 @@ elif page == "📂 Liste":
                                 cols = st.columns(min(len(imgs), 4))
                                 for i, img in enumerate(imgs):
                                     cols[i % 4].image(img, width="stretch")
+
                     with c2:
                         if st.button("✏️", key=f"edit_{row['id']}"):
                             st.session_state.edit_row = row.to_dict()
                             st.rerun()
+
                     with c3:
                         if st.button("🗑️", key=f"del_{row['id']}"):
                             st.session_state.delete_id = row["id"]
                             st.rerun()
+
                     st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================================================
