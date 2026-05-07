@@ -42,8 +42,8 @@ try:
     POCKETBASE_USER_EMAIL    = st.secrets["POCKETBASE_USER_EMAIL"]
     POCKETBASE_USER_PASSWORD = st.secrets["POCKETBASE_USER_PASSWORD"]
     APP_PASSWORD             = st.secrets["APP_PASSWORD"]
-    PUSHOVER_TOKEN           = st.secrets.get("PUSHOVER_TOKEN", "")
-    PUSHOVER_USER            = st.secrets.get("PUSHOVER_USER",  "")
+    PUSHOVER_TOKEN           = "a6vqbmhhjyzu19ay371qxhmmwuwnpp"
+    PUSHOVER_USER            = "uykkgtvss4kmbyuscgce5xqgdb5ufy"
 except (KeyError, FileNotFoundError):
     st.error(
         "⚠️ Configuration manquante. Ajoute dans Streamlit Cloud > Settings > Secrets :\n\n"
