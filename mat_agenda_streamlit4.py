@@ -624,6 +624,7 @@ def init_state():
         "last_coord_click": None,
         "coord_step": "idle",   # idle -> name -> topleft -> bottomright -> save
         "coord_zone_name": "",  # nom de la zone en cours de relevé
+        "_cur_sig": None,       # signature du clic courant (anti clic-fantome)
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -1383,9 +1384,12 @@ elif page == "🏭 Plan Usine":
 
         if click:
             sig = f"{click['x']}_{click['y']}"
+            # On memorise toujours le clic courant (pour neutraliser les clics fantomes)
+            st.session_state._cur_sig = sig
 
             if mode_releve:
-                # On enregistre un point selon l'etape de l'assistant
+                # On enregistre un point selon l'etape de l'assistant.
+                # On ne reagit QUE si le clic est nouveau par rapport au dernier vu.
                 step = st.session_state.coord_step
                 if st.session_state.last_coord_click != sig:
                     if step == "topleft":
@@ -1429,13 +1433,20 @@ elif page == "🏭 Plan Usine":
             st.session_state.coord_zone_name = ""
             st.session_state.last_coord_click = None
 
+        def _aller_a_topleft():
+            """Passe a l'etape coin haut-gauche en ignorant le clic deja present."""
+            st.session_state.coord_points = []
+            st.session_state.coord_step = "topleft"
+            # On baseline sur le clic courant : il sera ignore tant qu'on ne reclique pas
+            st.session_state.last_coord_click = st.session_state.get("_cur_sig")
+
         # ÉTAPE 0 : au repos, bouton pour démarrer
         if step == "idle":
             st.info("Clique sur **➕ Ajouter zone** pour démarrer le relevé d'une nouvelle zone.")
             if st.button("➕ Ajouter zone", type="primary", width="stretch"):
                 st.session_state.coord_points = []
                 st.session_state.coord_zone_name = ""
-                st.session_state.last_coord_click = None
+                st.session_state.last_coord_click = st.session_state.get("_cur_sig")
                 st.session_state.coord_step = "name"
                 st.rerun()
 
@@ -1454,8 +1465,7 @@ elif page == "🏭 Plan Usine":
             if c1.button("➡️ Valider le nom", type="primary", width="stretch",
                          disabled=not nom.strip()):
                 st.session_state.coord_zone_name = nom.strip()
-                st.session_state.coord_step = "topleft"
-                st.session_state.last_coord_click = None
+                _aller_a_topleft()
                 st.rerun()
             if c2.button("❌ Annuler", width="stretch"):
                 _reset_assistant()
@@ -1478,9 +1488,7 @@ elif page == "🏭 Plan Usine":
             st.info("👆 Clique maintenant sur le **coin bas-droit** de la zone.")
             c1, c2 = st.columns(2)
             if c1.button("🔄 Refaire le coin haut-gauche", width="stretch"):
-                st.session_state.coord_points = []
-                st.session_state.coord_step = "topleft"
-                st.session_state.last_coord_click = None
+                _aller_a_topleft()
                 st.rerun()
             if c2.button("❌ Annuler", width="stretch"):
                 _reset_assistant()
@@ -1503,9 +1511,7 @@ elif page == "🏭 Plan Usine":
                 _reset_assistant()
                 st.rerun()
             if c2.button("🔄 Refaire les coins", width="stretch"):
-                st.session_state.coord_points = []
-                st.session_state.coord_step = "topleft"
-                st.session_state.last_coord_click = None
+                _aller_a_topleft()
                 st.rerun()
 
         # Liste des zones déjà enregistrées (toujours visible)
