@@ -618,6 +618,10 @@ def init_state():
         "usine_selectionnee": DEFAULT_USINE,
         "calendar_version": 0,
         "last_event_click": None,
+        # Mode relevé de coordonnées (pour définir les zones d'un plan)
+        "coord_points": [],     # clics en cours (max 2 : coin HG puis coin BD)
+        "coord_lines": [],      # lignes de zones generees, pretes a copier
+        "last_coord_click": None,
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -1356,33 +1360,126 @@ elif page == "🏭 Plan Usine":
         if choix:
             st.session_state.zone_selectionnee = choix
 
+    # ----- Mode relevé de coordonnées -----
+    mode_releve = st.checkbox(
+        "🎯 Mode relevé de coordonnées (pour définir les zones d'un plan)",
+        help="Clique sur le coin haut-gauche puis le coin bas-droit d'une zone. "
+             "L'app génère la ligne de code à copier."
+    )
+
     # ----- Affichage du plan -----
-    if not ZONES:
+    if not ZONES and not mode_releve:
         st.info(
             f"ℹ️ Aucune zone n'est encore définie pour **{usine}**.\n\n"
-            "Tu peux quand même afficher le plan une fois l'image en place. "
-            "Les zones cliquables seront ajoutées plus tard dans le code "
-            "(dictionnaire `ZONES_CHEVAL_BLANC` ou `ZONES_PETRIGEL`)."
+            "Coche **🎯 Mode relevé de coordonnées** ci-dessus pour les créer "
+            "en cliquant sur le plan."
         )
 
     try:
         image = Image.open(plan_image_file)
         click = streamlit_image_coordinates(image, key=f"plan_{usine}", width=image.width)
 
-        if click and ZONES:
-            x, y = click["x"], click["y"]
-            for machine, (x1, y1, x2, y2) in ZONES.items():
-                if x1 <= x <= x2 and y1 <= y <= y2:
-                    st.session_state.zone_selectionnee = machine
-                    break
-            else:
-                st.warning(f"📍 Aucune machine à cette position ({x}, {y})")
+        if click:
+            sig = f"{click['x']}_{click['y']}"
+
+            if mode_releve:
+                # On enregistre chaque NOUVEAU clic comme un point
+                if st.session_state.last_coord_click != sig:
+                    st.session_state.last_coord_click = sig
+                    pts = st.session_state.coord_points
+                    pts.append((int(click["x"]), int(click["y"])))
+                    # On ne garde que les 2 derniers points (coin HG + coin BD)
+                    st.session_state.coord_points = pts[-2:]
+                    st.rerun()
+
+            elif ZONES:
+                # Mode normal : detection de la zone cliquee
+                x, y = click["x"], click["y"]
+                for machine, (x1, y1, x2, y2) in ZONES.items():
+                    if x1 <= x <= x2 and y1 <= y <= y2:
+                        st.session_state.zone_selectionnee = machine
+                        break
+                else:
+                    st.warning(f"📍 Aucune machine à cette position ({x}, {y})")
 
     except FileNotFoundError:
         st.error(
             f"❌ Fichier `{plan_image_file}` introuvable pour l'usine **{usine}**.\n\n"
             "Place l'image à la racine du projet (au même niveau que le script)."
         )
+
+    # ----- Panneau du mode relevé -----
+    if mode_releve:
+        st.divider()
+        st.subheader("🎯 Relevé de coordonnées")
+
+        pts = st.session_state.coord_points
+
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            num_zone = st.text_input(
+                "Numéro de la zone",
+                value="",
+                placeholder="ex : 01, 12, 105...",
+                key="coord_num_zone"
+            )
+        with c2:
+            st.write("")
+            st.write("")
+            if st.button("🔄 Recommencer cette zone", width="stretch"):
+                st.session_state.coord_points = []
+                st.session_state.last_coord_click = None
+                st.rerun()
+
+        if len(pts) == 0:
+            st.info("👆 Clique sur le **coin haut-gauche** de la zone sur le plan.")
+        elif len(pts) == 1:
+            st.success(f"✅ Coin haut-gauche : **{pts[0]}**")
+            st.info("👆 Clique maintenant sur le **coin bas-droit** de la zone.")
+        else:
+            (xa, ya), (xb, yb) = pts[0], pts[1]
+            x1, x2 = min(xa, xb), max(xa, xb)
+            y1, y2 = min(ya, yb), max(ya, yb)
+
+            st.success(f"✅ 2 points relevés : {pts[0]} et {pts[1]}")
+
+            zone_label = num_zone.strip() if num_zone.strip() else "XX"
+            ligne = f'    "{zone_label}": ({x1}, {y1}, {x2}, {y2}),'
+            st.code(ligne, language="python")
+
+            if st.button("➕ Ajouter cette zone à la liste", type="primary",
+                         disabled=not num_zone.strip()):
+                st.session_state.coord_lines.append(ligne)
+                st.session_state.coord_points = []
+                st.session_state.last_coord_click = None
+                st.rerun()
+            if not num_zone.strip():
+                st.caption("⚠️ Renseigne d'abord le numéro de la zone.")
+
+        # Liste des zones déjà relevées
+        if st.session_state.coord_lines:
+            st.divider()
+            st.markdown(f"**📋 Zones relevées ({len(st.session_state.coord_lines)})** "
+                        "— copie ce bloc dans le code :")
+            dict_name = ("ZONES_CHEVAL_BLANC" if usine == "Cheval Blanc"
+                         else "ZONES_PETRIGEL" if usine == "Pétrigel"
+                         else "ZONES_BOULANGERIE_YONG")
+            bloc = (f"{dict_name} = {{\n"
+                    + "\n".join(st.session_state.coord_lines)
+                    + "\n}")
+            st.code(bloc, language="python")
+
+            cc1, cc2 = st.columns(2)
+            if cc1.button("🗑️ Vider la liste", width="stretch"):
+                st.session_state.coord_lines = []
+                st.rerun()
+            cc2.download_button(
+                "📥 Télécharger en .txt",
+                data=bloc,
+                file_name=f"zones_{usine.replace(' ', '_').lower()}.txt",
+                mime="text/plain",
+                width="stretch"
+            )
 
     zone = st.session_state.zone_selectionnee
     if zone:
