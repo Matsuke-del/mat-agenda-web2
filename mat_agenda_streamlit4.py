@@ -1383,8 +1383,9 @@ elif page == "🏭 Plan Usine":
             sig = f"{click['x']}_{click['y']}"
 
             if mode_releve:
-                # On enregistre chaque NOUVEAU clic comme un point
-                if st.session_state.last_coord_click != sig:
+                # On enregistre un point seulement si le nom de zone est renseigne (etape 1)
+                nom_zone_saisi = st.session_state.get("coord_num_zone", "").strip()
+                if nom_zone_saisi and st.session_state.last_coord_click != sig:
                     st.session_state.last_coord_click = sig
                     pts = st.session_state.coord_points
                     pts.append((int(click["x"]), int(click["y"])))
@@ -1415,51 +1416,66 @@ elif page == "🏭 Plan Usine":
 
         pts = st.session_state.coord_points
 
-        c1, c2 = st.columns([1, 1])
+        # ----- ÉTAPE 1 : nom de la zone -----
+        st.markdown("**1️⃣ Tape le nom (numéro) de la zone**")
+        c1, c2 = st.columns([2, 1])
         with c1:
             num_zone = st.text_input(
                 "Numéro de la zone",
                 value="",
                 placeholder="ex : 01, 12, 105...",
+                label_visibility="collapsed",
                 key="coord_num_zone"
             )
         with c2:
-            st.write("")
-            st.write("")
-            if st.button("🔄 Recommencer cette zone", width="stretch"):
+            if st.button("🔄 Recommencer", width="stretch"):
                 st.session_state.coord_points = []
                 st.session_state.last_coord_click = None
                 st.rerun()
 
-        if len(pts) == 0:
-            st.info("👆 Clique sur le **coin haut-gauche** de la zone sur le plan.")
-        elif len(pts) == 1:
-            st.success(f"✅ Coin haut-gauche : **{pts[0]}**")
-            st.info("👆 Clique maintenant sur le **coin bas-droit** de la zone.")
+        if not num_zone.strip():
+            st.caption("⚠️ Renseigne d'abord le nom de la zone avant de cliquer sur le plan.")
+
+        # ----- ÉTAPE 2 : coin haut-gauche -----
+        if len(pts) >= 1:
+            st.markdown(f"**2️⃣ Coin haut-gauche : ✅ {pts[0]}**")
         else:
+            st.markdown("**2️⃣ Clique sur le coin _haut-gauche_ de la zone** 👆")
+
+        # ----- ÉTAPE 3 : coin bas-droit -----
+        if len(pts) >= 2:
+            st.markdown(f"**3️⃣ Coin bas-droit : ✅ {pts[1]}**")
+        elif len(pts) == 1:
+            st.markdown("**3️⃣ Clique sur le coin _bas-droit_ de la zone** 👆")
+        else:
+            st.markdown("3️⃣ Coin bas-droit : _(en attente)_")
+
+        # ----- ÉTAPE 4 : enregistrer -----
+        st.markdown("**4️⃣ Enregistre la zone**")
+        if len(pts) >= 2:
             (xa, ya), (xb, yb) = pts[0], pts[1]
             x1, x2 = min(xa, xb), max(xa, xb)
             y1, y2 = min(ya, yb), max(ya, yb)
-
-            st.success(f"✅ 2 points relevés : {pts[0]} et {pts[1]}")
 
             zone_label = num_zone.strip() if num_zone.strip() else "XX"
             ligne = f'    "{zone_label}": ({x1}, {y1}, {x2}, {y2}),'
             st.code(ligne, language="python")
 
-            if st.button("➕ Ajouter cette zone à la liste", type="primary",
-                         disabled=not num_zone.strip()):
+            if st.button("💾 Enregistrer la zone", type="primary",
+                         width="stretch", disabled=not num_zone.strip()):
                 st.session_state.coord_lines.append(ligne)
                 st.session_state.coord_points = []
                 st.session_state.last_coord_click = None
                 st.rerun()
             if not num_zone.strip():
-                st.caption("⚠️ Renseigne d'abord le numéro de la zone.")
+                st.caption("⚠️ Renseigne le nom de la zone (étape 1) pour pouvoir enregistrer.")
+        else:
+            st.caption("Termine les étapes 2 et 3 (les deux coins) pour enregistrer.")
 
         # Liste des zones déjà relevées
         if st.session_state.coord_lines:
             st.divider()
-            st.markdown(f"**📋 Zones relevées ({len(st.session_state.coord_lines)})** "
+            st.markdown(f"**📋 Zones enregistrées ({len(st.session_state.coord_lines)})** "
                         "— copie ce bloc dans le code :")
             dict_name = ("ZONES_CHEVAL_BLANC" if usine == "Cheval Blanc"
                          else "ZONES_PETRIGEL" if usine == "Pétrigel"
