@@ -618,10 +618,12 @@ def init_state():
         "usine_selectionnee": DEFAULT_USINE,
         "calendar_version": 0,
         "last_event_click": None,
-        # Mode relevé de coordonnées (pour définir les zones d'un plan)
+        # Mode relevé de coordonnées (assistant étape par étape)
         "coord_points": [],     # clics en cours (max 2 : coin HG puis coin BD)
         "coord_lines": [],      # lignes de zones generees, pretes a copier
         "last_coord_click": None,
+        "coord_step": "idle",   # idle -> name -> topleft -> bottomright -> save
+        "coord_zone_name": "",  # nom de la zone en cours de relevé
     }
     for k, v in defaults.items():
         st.session_state.setdefault(k, v)
@@ -1383,15 +1385,20 @@ elif page == "🏭 Plan Usine":
             sig = f"{click['x']}_{click['y']}"
 
             if mode_releve:
-                # On enregistre un point seulement si le nom de zone est renseigne (etape 1)
-                nom_zone_saisi = st.session_state.get("coord_num_zone", "").strip()
-                if nom_zone_saisi and st.session_state.last_coord_click != sig:
-                    st.session_state.last_coord_click = sig
-                    pts = st.session_state.coord_points
-                    pts.append((int(click["x"]), int(click["y"])))
-                    # On ne garde que les 2 derniers points (coin HG + coin BD)
-                    st.session_state.coord_points = pts[-2:]
-                    st.rerun()
+                # On enregistre un point selon l'etape de l'assistant
+                step = st.session_state.coord_step
+                if st.session_state.last_coord_click != sig:
+                    if step == "topleft":
+                        st.session_state.last_coord_click = sig
+                        st.session_state.coord_points = [(int(click["x"]), int(click["y"]))]
+                        st.session_state.coord_step = "bottomright"
+                        st.rerun()
+                    elif step == "bottomright":
+                        st.session_state.last_coord_click = sig
+                        pts = st.session_state.coord_points + [(int(click["x"]), int(click["y"]))]
+                        st.session_state.coord_points = pts[-2:]
+                        st.session_state.coord_step = "save"
+                        st.rerun()
 
             elif ZONES:
                 # Mode normal : detection de la zone cliquee
@@ -1409,70 +1416,99 @@ elif page == "🏭 Plan Usine":
             "Place l'image à la racine du projet (au même niveau que le script)."
         )
 
-    # ----- Panneau du mode relevé -----
+    # ----- Panneau du mode relevé (assistant étape par étape) -----
     if mode_releve:
         st.divider()
         st.subheader("🎯 Relevé de coordonnées")
 
-        pts = st.session_state.coord_points
+        step = st.session_state.coord_step
 
-        # ----- ÉTAPE 1 : nom de la zone -----
-        st.markdown("**1️⃣ Tape le nom (numéro) de la zone**")
-        c1, c2 = st.columns([2, 1])
-        with c1:
-            num_zone = st.text_input(
-                "Numéro de la zone",
-                value="",
+        def _reset_assistant():
+            st.session_state.coord_step = "idle"
+            st.session_state.coord_points = []
+            st.session_state.coord_zone_name = ""
+            st.session_state.last_coord_click = None
+
+        # ÉTAPE 0 : au repos, bouton pour démarrer
+        if step == "idle":
+            st.info("Clique sur **➕ Ajouter zone** pour démarrer le relevé d'une nouvelle zone.")
+            if st.button("➕ Ajouter zone", type="primary", width="stretch"):
+                st.session_state.coord_points = []
+                st.session_state.coord_zone_name = ""
+                st.session_state.last_coord_click = None
+                st.session_state.coord_step = "name"
+                st.rerun()
+
+        # ÉTAPE 1 : nom de la zone
+        elif step == "name":
+            st.markdown("### 1️⃣ Nom de la zone")
+            st.write("Tape le nom (numéro) de la zone à enregistrer :")
+            nom = st.text_input(
+                "Nom de la zone",
+                value=st.session_state.coord_zone_name,
                 placeholder="ex : 01, 12, 105...",
                 label_visibility="collapsed",
-                key="coord_num_zone"
+                key="coord_name_input"
             )
-        with c2:
-            if st.button("🔄 Recommencer", width="stretch"):
-                st.session_state.coord_points = []
+            c1, c2 = st.columns(2)
+            if c1.button("➡️ Valider le nom", type="primary", width="stretch",
+                         disabled=not nom.strip()):
+                st.session_state.coord_zone_name = nom.strip()
+                st.session_state.coord_step = "topleft"
                 st.session_state.last_coord_click = None
                 st.rerun()
+            if c2.button("❌ Annuler", width="stretch"):
+                _reset_assistant()
+                st.rerun()
+            if not nom.strip():
+                st.caption("⚠️ Saisis un nom pour continuer.")
 
-        if not num_zone.strip():
-            st.caption("⚠️ Renseigne d'abord le nom de la zone avant de cliquer sur le plan.")
+        # ÉTAPE 2 : coin haut-gauche
+        elif step == "topleft":
+            st.markdown(f"### 2️⃣ Zone « {st.session_state.coord_zone_name} » — coin haut-gauche")
+            st.info("👆 Clique sur le **coin haut-gauche** de la zone sur le plan ci-dessus.")
+            if st.button("❌ Annuler", width="stretch"):
+                _reset_assistant()
+                st.rerun()
 
-        # ----- ÉTAPE 2 : coin haut-gauche -----
-        if len(pts) >= 1:
-            st.markdown(f"**2️⃣ Coin haut-gauche : ✅ {pts[0]}**")
-        else:
-            st.markdown("**2️⃣ Clique sur le coin _haut-gauche_ de la zone** 👆")
+        # ÉTAPE 3 : coin bas-droit
+        elif step == "bottomright":
+            st.markdown(f"### 3️⃣ Zone « {st.session_state.coord_zone_name} » — coin bas-droit")
+            st.success(f"✅ Coin haut-gauche relevé : {st.session_state.coord_points[0]}")
+            st.info("👆 Clique maintenant sur le **coin bas-droit** de la zone.")
+            c1, c2 = st.columns(2)
+            if c1.button("🔄 Refaire le coin haut-gauche", width="stretch"):
+                st.session_state.coord_points = []
+                st.session_state.coord_step = "topleft"
+                st.session_state.last_coord_click = None
+                st.rerun()
+            if c2.button("❌ Annuler", width="stretch"):
+                _reset_assistant()
+                st.rerun()
 
-        # ----- ÉTAPE 3 : coin bas-droit -----
-        if len(pts) >= 2:
-            st.markdown(f"**3️⃣ Coin bas-droit : ✅ {pts[1]}**")
-        elif len(pts) == 1:
-            st.markdown("**3️⃣ Clique sur le coin _bas-droit_ de la zone** 👆")
-        else:
-            st.markdown("3️⃣ Coin bas-droit : _(en attente)_")
-
-        # ----- ÉTAPE 4 : enregistrer -----
-        st.markdown("**4️⃣ Enregistre la zone**")
-        if len(pts) >= 2:
-            (xa, ya), (xb, yb) = pts[0], pts[1]
+        # ÉTAPE 4 : enregistrer
+        elif step == "save":
+            st.markdown(f"### 4️⃣ Zone « {st.session_state.coord_zone_name} » — enregistrer")
+            (xa, ya), (xb, yb) = st.session_state.coord_points[0], st.session_state.coord_points[1]
             x1, x2 = min(xa, xb), max(xa, xb)
             y1, y2 = min(ya, yb), max(ya, yb)
+            st.success(f"✅ Coin haut-gauche : ({x1}, {y1})  •  ✅ Coin bas-droit : ({x2}, {y2})")
 
-            zone_label = num_zone.strip() if num_zone.strip() else "XX"
-            ligne = f'    "{zone_label}": ({x1}, {y1}, {x2}, {y2}),'
+            ligne = f'    "{st.session_state.coord_zone_name}": ({x1}, {y1}, {x2}, {y2}),'
             st.code(ligne, language="python")
 
-            if st.button("💾 Enregistrer la zone", type="primary",
-                         width="stretch", disabled=not num_zone.strip()):
+            c1, c2 = st.columns(2)
+            if c1.button("💾 Enregistrer zone", type="primary", width="stretch"):
                 st.session_state.coord_lines.append(ligne)
+                _reset_assistant()
+                st.rerun()
+            if c2.button("🔄 Refaire les coins", width="stretch"):
                 st.session_state.coord_points = []
+                st.session_state.coord_step = "topleft"
                 st.session_state.last_coord_click = None
                 st.rerun()
-            if not num_zone.strip():
-                st.caption("⚠️ Renseigne le nom de la zone (étape 1) pour pouvoir enregistrer.")
-        else:
-            st.caption("Termine les étapes 2 et 3 (les deux coins) pour enregistrer.")
 
-        # Liste des zones déjà relevées
+        # Liste des zones déjà enregistrées (toujours visible)
         if st.session_state.coord_lines:
             st.divider()
             st.markdown(f"**📋 Zones enregistrées ({len(st.session_state.coord_lines)})** "
