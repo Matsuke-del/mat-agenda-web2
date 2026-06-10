@@ -7,12 +7,14 @@ MAT AGENDA - version Streamlit (PocketBase backend)
 - Reecriture des URLs d'images locales 127.0.0.1 -> URL publique
 - Compression auto des images a l'upload
 - Image de fond personnalisee (Mat_agenda_logo.png a la racine)
+- Plan Usine multi-usines : Boulangerie Yong, Cheval Blanc, Petrigel
 - Tout le reste comme avant : calendrier, liste, stats, plan, taches
 """
 
 import base64
 import io
 import json
+import unicodedata
 from datetime import datetime, time, date
 from pathlib import Path
 
@@ -64,6 +66,94 @@ COULEUR_TECH = {"MAT": "#00ff9c", "Sébastien": "#00ffee"}
 # Compression images
 COMPRESS_MAX_DIM = 1600
 COMPRESS_QUALITY = 85
+
+# =========================================================
+# USINES (multi-plans)
+# =========================================================
+USINES_LIST = ["Boulangerie Yong", "Cheval Blanc", "Pétrigel"]
+DEFAULT_USINE = "Boulangerie Yong"
+
+# Mot-cle pour reconnaitre une usine dans la description.
+# Ex : "cheval blanc zone 5" => usine Cheval Blanc, zone 5
+USINE_KEYWORDS = {
+    "Boulangerie Yong": "yong",
+    "Cheval Blanc":     "cheval blanc",
+    "Pétrigel":         "petrigel",
+}
+
+# Nom de fichier image (a placer a la racine du repo) par usine
+USINE_IMAGES = {
+    "Boulangerie Yong": "Plan_usine.png",
+    "Cheval Blanc":     "Plan_cheval_blanc.png",
+    "Pétrigel":         "Plan_petrigel.png",
+}
+
+# Zones de Boulangerie Yong (plan existant)
+ZONES_BOULANGERIE_YONG = {
+    "01": (1011,180,1098,244),  "02": (945,180,1009,242),
+    "03": (935,242,1009,293),   "04": (1234,129,1310,208),
+    "05": (1234,205,1310,272),  "06": (585,215,682,254),
+    "07": (422,699,533,786),    "08": (1234,440,1404,571),
+    "09": (1234,571,1404,692),  "10": (584,414,711,488),
+    "12": (263,150,334,224),    "14": (263,224,421,312),
+    "15": (533,179,585,879),    "26": (1234,313,1404,440),
+    "27": (1234,692,1404,783),  "28": (289,795,467,879),
+    "29": (584,612,663,680),    "30": (584,180,679,215),
+    "31": (584,680,663,769),    "32": (832,180,947,242),
+    "33": (791,83,1029,179),    "36": (382,80,443,224),
+    "37": (681,256,788,333),    "38": (877,333,1008,433),
+    "39": (1024,438,1086,608),  "40": (873,794,1179,869),
+    "42": (1086,612,1175,696),  "44": (740,292,1030,329),
+    "45": (663,811,797,876),    "46": (903,438,1024,608),
+    "47": (832,242,889,291),    "49": (889,242,935,291),
+    "53": (584,488,771,610),    "101": (373,314,530,693),
+    "102": (1104,126,1404,272), "103": (584,311,682,413),
+    "104": (584,83,788,180),    "105": (726,435,881,553),
+    "106": (681,333,793,488),   "107": (663,612,796,679),
+    "108": (1048,337,1116,391), "109": (1005,337,1051,391),
+    "110": (193,314,375,791),   "111": (1086,443,1175,612),
+    "117": (663,680,791,766),
+}
+
+# Zones des nouvelles usines : VIDES pour l'instant.
+# Format : "NUMERO": (x1, y1, x2, y2)
+ZONES_CHEVAL_BLANC = {
+    # "01": (x1, y1, x2, y2),
+}
+ZONES_PETRIGEL = {
+    # "01": (x1, y1, x2, y2),
+}
+
+USINE_ZONES = {
+    "Boulangerie Yong": ZONES_BOULANGERIE_YONG,
+    "Cheval Blanc":     ZONES_CHEVAL_BLANC,
+    "Pétrigel":         ZONES_PETRIGEL,
+}
+
+def _normalize_txt(s):
+    """Minuscule + suppression des accents."""
+    s = str(s).lower()
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return s
+
+def desc_match_usine_zone(desc, usine, zone):
+    """Verifie si une description correspond a une usine + zone.
+    - Doit contenir 'zone {zone}'.
+    - Si le mot-cle de l'usine est present -> match.
+    - Sinon (retrocompat) : descriptions sans nom d'usine -> usine par defaut.
+    """
+    dl = _normalize_txt(desc)
+    if f"zone {zone}".lower() not in dl:
+        return False
+    kw = _normalize_txt(USINE_KEYWORDS.get(usine, ""))
+    if kw and kw in dl:
+        return True
+    other_kws = [_normalize_txt(v) for u, v in USINE_KEYWORDS.items()
+                 if u != usine and v]
+    if any(o and o in dl for o in other_kws):
+        return False
+    return usine == DEFAULT_USINE
 
 # =========================================================
 # STYLE (avec image de fond, applique avant le login)
@@ -525,6 +615,7 @@ def init_state():
         "upload_key": 0,
         "zoom_image": None,
         "zone_selectionnee": None,
+        "usine_selectionnee": DEFAULT_USINE,
         "calendar_version": 0,
         "last_event_click": None,
     }
@@ -1208,53 +1299,46 @@ elif page == "📊 Statistiques":
         st.line_chart(stats_nb, color="#00ffee")
 
 # =========================================================
-# PAGE PLAN USINE
+# PAGE PLAN USINE (MULTI-USINES)
 # =========================================================
 
 elif page == "🏭 Plan Usine":
     st.header("🏭 Plan Usine")
 
-    ZONES = {
-        "01": (1011,180,1098,244),  "02": (945,180,1009,242),
-        "03": (935,242,1009,293),   "04": (1234,129,1310,208),
-        "05": (1234,205,1310,272),  "06": (585,215,682,254),
-        "07": (422,699,533,786),    "08": (1234,440,1404,571),
-        "09": (1234,571,1404,692),  "10": (584,414,711,488),
-        "12": (263,150,334,224),    "14": (263,224,421,312),
-        "15": (533,179,585,879),    "26": (1234,313,1404,440),
-        "27": (1234,692,1404,783),  "28": (289,795,467,879),
-        "29": (584,612,663,680),    "30": (584,180,679,215),
-        "31": (584,680,663,769),    "32": (832,180,947,242),
-        "33": (791,83,1029,179),    "36": (382,80,443,224),
-        "37": (681,256,788,333),    "38": (877,333,1008,433),
-        "39": (1024,438,1086,608),  "40": (873,794,1179,869),
-        "42": (1086,612,1175,696),  "44": (740,292,1030,329),
-        "45": (663,811,797,876),    "46": (903,438,1024,608),
-        "47": (832,242,889,291),    "49": (889,242,935,291),
-        "53": (584,488,771,610),    "101": (373,314,530,693),
-        "102": (1104,126,1404,272), "103": (584,311,682,413),
-        "104": (584,83,788,180),    "105": (726,435,881,553),
-        "106": (681,333,793,488),   "107": (663,612,796,679),
-        "108": (1048,337,1116,391), "109": (1005,337,1051,391),
-        "110": (193,314,375,791),   "111": (1086,443,1175,612),
-        "117": (663,680,791,766),
-    }
+    # ----- Sélecteur d'usine -----
+    c_usine, _ = st.columns([2, 6])
+    usine = c_usine.selectbox(
+        "🏭 Choix usine",
+        USINES_LIST,
+        index=USINES_LIST.index(st.session_state.get("usine_selectionnee", DEFAULT_USINE))
+            if st.session_state.get("usine_selectionnee", DEFAULT_USINE) in USINES_LIST else 0,
+        key="usine_select"
+    )
+    # Si on change d'usine, on reinitialise la zone selectionnee
+    if usine != st.session_state.get("usine_selectionnee"):
+        st.session_state.usine_selectionnee = usine
+        st.session_state.zone_selectionnee = None
+
+    # Zones + image de l'usine courante
+    ZONES = USINE_ZONES.get(usine, {})
+    plan_image_file = USINE_IMAGES.get(usine, "Plan_usine.png")
 
     @st.cache_data(ttl=60)
-    def compter_par_zone(machines: tuple) -> dict:
+    def compter_par_zone(machines: tuple, usine_nom: str) -> dict:
         out = {}
         if df.empty:
             return {m: 0 for m in machines}
-        desc = df["description"].astype(str).str.lower()
         for m in machines:
-            out[m] = int(desc.str.contains(f"zone {m}", regex=False).sum())
+            out[m] = int(df["description"].apply(
+                lambda d: desc_match_usine_zone(d, usine_nom, m)).sum())
         return out
 
-    counts = compter_par_zone(tuple(ZONES.keys()))
+    counts = compter_par_zone(tuple(ZONES.keys()), usine)
 
     c1, c2 = st.columns([3, 2])
     with c1:
-        st.caption("Clique une zone sur le plan, ou sélectionne directement :")
+        st.caption(f"Usine : **{usine}** — clique une zone sur le plan, "
+                   "ou sélectionne directement :")
     with c2:
         def sort_key(m):
             try:  return (0, int(m))
@@ -1267,16 +1351,25 @@ elif page == "🏭 Plan Usine":
             format_func=lambda z: "— Choisir —" if z == "" else
                 f"Zone {z}  ({counts.get(z,0)} activité{'s' if counts.get(z,0)>1 else ''})",
             label_visibility="collapsed",
-            key="zone_select"
+            key=f"zone_select_{usine}"
         )
         if choix:
             st.session_state.zone_selectionnee = choix
 
-    try:
-        image = Image.open("Plan_usine.png")
-        click = streamlit_image_coordinates(image, key="plan", width=image.width)
+    # ----- Affichage du plan -----
+    if not ZONES:
+        st.info(
+            f"ℹ️ Aucune zone n'est encore définie pour **{usine}**.\n\n"
+            "Tu peux quand même afficher le plan une fois l'image en place. "
+            "Les zones cliquables seront ajoutées plus tard dans le code "
+            "(dictionnaire `ZONES_CHEVAL_BLANC` ou `ZONES_PETRIGEL`)."
+        )
 
-        if click:
+    try:
+        image = Image.open(plan_image_file)
+        click = streamlit_image_coordinates(image, key=f"plan_{usine}", width=image.width)
+
+        if click and ZONES:
             x, y = click["x"], click["y"]
             for machine, (x1, y1, x2, y2) in ZONES.items():
                 if x1 <= x <= x2 and y1 <= y <= y2:
@@ -1286,23 +1379,25 @@ elif page == "🏭 Plan Usine":
                 st.warning(f"📍 Aucune machine à cette position ({x}, {y})")
 
     except FileNotFoundError:
-        st.error("❌ Fichier `Plan_usine.png` introuvable")
+        st.error(
+            f"❌ Fichier `{plan_image_file}` introuvable pour l'usine **{usine}**.\n\n"
+            "Place l'image à la racine du projet (au même niveau que le script)."
+        )
 
     zone = st.session_state.zone_selectionnee
     if zone:
         st.divider()
-        st.success(f"🟩 Zone sélectionnée : **{zone}**")
+        st.success(f"🟩 {usine} — Zone sélectionnée : **{zone}**")
 
         if df.empty:
             st.info("Aucune activité")
         else:
-            mask = df["description"].astype(str).str.contains(
-                f"zone {zone}", case=False, regex=False, na=False
-            )
+            mask = df["description"].apply(
+                lambda d: desc_match_usine_zone(d, usine, zone))
             zone_df = df[mask].sort_values("date", ascending=False)
 
             if zone_df.empty:
-                st.info(f"Aucune activité pour la zone {zone}")
+                st.info(f"Aucune activité pour {usine} — zone {zone}")
             else:
                 st.caption(f"📊 {len(zone_df)} activité(s) trouvée(s) • "
                            f"⏱ {zone_df['heures'].sum():.1f} h cumulées")
