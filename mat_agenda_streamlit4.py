@@ -118,7 +118,25 @@ ZONES_BOULANGERIE_YONG = {
 # Zones des nouvelles usines : VIDES pour l'instant.
 # Format : "NUMERO": (x1, y1, x2, y2)
 ZONES_CHEVAL_BLANC = {
-    # "01": (x1, y1, x2, y2),
+    "SDM NH3": (265, 139, 421, 434),
+    "SDM R+1": (264, 434, 476, 583),
+    "Chambre Froide PF": (265, 617, 478, 902),
+    "Sas Tampon": (481, 584, 698, 718),
+    "Quai": (481, 724, 650, 822),
+    "Conditionnement": (481, 142, 786, 583),
+    "Tunnel": (781, 140, 998, 502),
+    "CTA Fabrication": (1006, 137, 1268, 380),
+    "CTA air neuf": (1010, 384, 1249, 583),
+    "CTA Pétrissage": (1260, 139, 1409, 510),
+    "Stockage MP": (1413, 139, 1529, 508),
+    "Chambre Froide MP": (1529, 140, 1636, 322),
+    "Stockage Beurre": (1534, 327, 1636, 505),
+    "Circulation": (1411, 509, 1673, 597),
+    "Local Silos": (1570, 602, 1670, 928),
+    "local dechet": (1505, 805, 1566, 925),
+    "Local rognures": (1424, 805, 1500, 928),
+    "Stockage Pâtes": (1226, 807, 1420, 932),
+    "MAG + Eau Pétrin": (1349, 643, 1558, 714),
 }
 ZONES_PETRIGEL = {
     # "01": (x1, y1, x2, y2),
