@@ -136,6 +136,7 @@ ZONES_CHEVAL_BLANC = {
     "local dechet": (1505, 805, 1566, 925),
     "Local rognures": (1424, 805, 1500, 928),
     "Stockage Pâtes": (1226, 807, 1420, 932),
+    "espace entre SDM et stockage MP": (267, 586, 475, 609),
     "MAG + Eau Pétrin": (1349, 643, 1558, 714),
 }
 ZONES_PETRIGEL = {
