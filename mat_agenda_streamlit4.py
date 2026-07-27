@@ -633,6 +633,9 @@ def init_state():
         "page_num": 1,
         "upload_key": 0,
         "zoom_image": None,
+        "zoom_return_row": None,   # activité à rouvrir après fermeture du zoom
+        "cal_date": None,          # date affichée du calendrier (préservée)
+        "cal_view": "dayGridMonth",# vue affichée du calendrier (préservée)
         "zone_selectionnee": None,
         "usine_selectionnee": DEFAULT_USINE,
         "calendar_version": 0,
@@ -654,10 +657,16 @@ init_state()
 # DIALOGS (POPUPS)
 # =========================================================
 
-@st.dialog("🖼️ Image en grand", on_dismiss="rerun")
+@st.dialog("🖼️ Image en grand", width="large", on_dismiss="rerun")
 def dlg_zoom_image(url: str):
     st.image(url, width="stretch")
-    if st.button("Fermer", width="stretch"):
+    label = ("❌ Fermer et revenir à l'activité"
+             if st.session_state.get("zoom_return_row") is not None
+             else "❌ Fermer")
+    if st.button(label, width="stretch", type="primary"):
+        ret = st.session_state.pop("zoom_return_row", None)
+        if ret is not None:
+            st.session_state.details_row = ret
         st.rerun()
 
 @st.dialog("📋 Détails activité", on_dismiss="rerun")
@@ -697,6 +706,7 @@ def dlg_details_activite(row: dict):
                 st.image(img, width="stretch")
                 if st.button("🔍 Zoom", key=f"zoom_{record_id}_{i}"):
                     st.session_state.zoom_image = img
+                    st.session_state.zoom_return_row = row  # pour revenir ici
                     st.rerun()
 
     st.divider()
@@ -748,7 +758,11 @@ def _form_activite(row=None):
     c1, c2 = st.columns(2)
     tech  = c1.selectbox("👷 Technicien", TECHNICIENS,
                          index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
-    color = c2.color_picker("🎨 Couleur", default_color)
+    # Couleur : clé stable pour que le choix soit bien conservé et enregistré
+    color_key = f"color_pick_{row.get('id') if is_edit else 'new'}"
+    if color_key not in st.session_state:
+        st.session_state[color_key] = default_color
+    color = c2.color_picker("🎨 Couleur", key=color_key)
 
     # Images existantes : depuis le champ "images" de PocketBase
     images_existantes_files = row.get("images", []) if is_edit else []
@@ -878,6 +892,7 @@ def _form_activite(row=None):
 
             invalider_cache()
             st.session_state.upload_key += 1
+            st.session_state.pop(color_key, None)
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
             st.session_state.pop("last_event_click", None)
             st.rerun()
@@ -885,6 +900,7 @@ def _form_activite(row=None):
             st.error(f"Erreur : {e}")
 
     if c2.button("Annuler", width="stretch"):
+        st.session_state.pop(color_key, None)
         st.rerun()
 
 @st.dialog("➕ Ajouter une activité", width="large", on_dismiss="rerun")
@@ -980,6 +996,13 @@ if not _dialog_opened and st.session_state.get("zoom_image"):
     _dialog_opened = True
     img = st.session_state.pop("zoom_image")
     dlg_zoom_image(img)
+
+# Le zoom vient d'être fermé (croix ✕ ou bouton) : on rouvre l'activité si besoin
+if not _dialog_opened and st.session_state.get("zoom_return_row") is not None:
+    _dialog_opened = True
+    ret = st.session_state.pop("zoom_return_row")
+    st.session_state.details_row = ret
+    st.rerun()
 
 if not _dialog_opened and st.session_state.get("delete_id"):
     _dialog_opened = True
@@ -1085,39 +1108,50 @@ if page == "📅 Calendrier":
 
         cal_key = f"calendar_{st.session_state.get('calendar_version', 0)}"
 
+        cal_options = {
+            "locale": "fr",
+            "firstDay": 1,
+            "timeZone": "local",
+            "initialView": st.session_state.get("cal_view", "dayGridMonth"),
+            "headerToolbar": {
+                "left": "prev,next today",
+                "center": "title",
+                "right": "dayGridMonth,timeGridWeek,timeGridDay"
+            },
+            "buttonText": {
+                "today": "Aujourd'hui",
+                "month": "Mois",
+                "week":  "Semaine",
+                "day":   "Jour"
+            }
+        }
+        if st.session_state.get("cal_date"):
+            cal_options["initialDate"] = st.session_state["cal_date"]
+
         state = calendar(
             events=events,
-            options={
-                "locale": "fr",
-                "firstDay": 1,
-                "timeZone": "local",
-                "headerToolbar": {
-                    "left": "prev,next today",
-                    "center": "title",
-                    "right": "dayGridMonth,timeGridWeek,timeGridDay"
-                },
-                "buttonText": {
-                    "today": "Aujourd'hui",
-                    "month": "Mois",
-                    "week":  "Semaine",
-                    "day":   "Jour"
-                }
-            },
+            options=cal_options,
             callbacks=["eventClick"],
             key=cal_key,
         )
 
         if state and state.get("eventClick"):
             event_click = state["eventClick"]
-            click_signature = f"{event_click['event']['id']}_{event_click.get('view', {}).get('currentStart', '')}"
-
-            if st.session_state.get("last_event_click") != click_signature:
-                st.session_state.last_event_click = click_signature
-                event_id = event_click["event"]["id"]
-                match = df[df["id"].astype(str) == str(event_id)]
-                if not match.empty:
-                    st.session_state.details_row = match.iloc[0].to_dict()
-                    st.rerun()
+            event_id = event_click["event"]["id"]
+            match = df[df["id"].astype(str) == str(event_id)]
+            if not match.empty:
+                # Mémoriser la vue/date pour la restituer après la popup
+                ev_start = event_click["event"].get("start")
+                if ev_start:
+                    st.session_state.cal_date = str(ev_start)[:10]
+                view_type = event_click.get("view", {}).get("type")
+                if view_type:
+                    st.session_state.cal_view = view_type
+                # Ouvrir la popup + réinitialiser le calendrier (pour pouvoir
+                # rouvrir le MÊME évènement ensuite)
+                st.session_state.details_row = match.iloc[0].to_dict()
+                st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
+                st.rerun()
 
 # =========================================================
 # PAGE LISTE
@@ -1236,7 +1270,7 @@ elif page == "📂 Liste":
             for _, row in sub.iloc[debut_idx:fin_idx].iterrows():
                 with st.container():
                     st.markdown('<div class="activity-card">', unsafe_allow_html=True)
-                    c1, c2, c3 = st.columns([7, 1, 1])
+                    c1, c2, c3, c4 = st.columns([6, 1, 1, 1])
 
                     with c1:
                         st.markdown(
@@ -1268,11 +1302,17 @@ elif page == "📂 Liste":
                                     cols[i % 4].image(img, width="stretch")
 
                     with c2:
+                        if st.button("👁️", key=f"voir_{row['id']}",
+                                     help="Ouvrir l'activité (avec zoom photos)"):
+                            st.session_state.details_row = row.to_dict()
+                            st.rerun()
+
+                    with c3:
                         if st.button("✏️", key=f"edit_{row['id']}"):
                             st.session_state.edit_row = row.to_dict()
                             st.rerun()
 
-                    with c3:
+                    with c4:
                         if st.button("🗑️", key=f"del_{row['id']}"):
                             st.session_state.delete_id = row["id"]
                             st.rerun()
@@ -1579,7 +1619,7 @@ elif page == "🏭 Plan Usine":
                 for _, row in zone_df.iterrows():
                     with st.container():
                         st.markdown('<div class="activity-card">', unsafe_allow_html=True)
-                        c1, c2, c3 = st.columns([7, 1, 1])
+                        c1, c2, c3, c4 = st.columns([6, 1, 1, 1])
                         with c1:
                             st.markdown(
                                 f"**📅 {format_date_fr(row['date'])}** • "
@@ -1604,10 +1644,15 @@ elif page == "🏭 Plan Usine":
                                     for i, img in enumerate(imgs):
                                         cols[i % 4].image(img, width="stretch")
                         with c2:
+                            if st.button("👁️", key=f"zone_voir_{row['id']}",
+                                         help="Ouvrir l'activité (avec zoom photos)"):
+                                st.session_state.details_row = row.to_dict()
+                                st.rerun()
+                        with c3:
                             if st.button("✏️", key=f"zone_edit_{row['id']}"):
                                 st.session_state.edit_row = row.to_dict()
                                 st.rerun()
-                        with c3:
+                        with c4:
                             if st.button("🗑️", key=f"zone_del_{row['id']}"):
                                 st.session_state.delete_id = row["id"]
                                 st.rerun()
