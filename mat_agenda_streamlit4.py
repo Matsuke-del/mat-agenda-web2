@@ -63,6 +63,21 @@ APP_URL = "https://mat-agenda-web2-mngwrfjcalzf3kbpdvd99n.streamlit.app"
 TECHNICIENS = ["MAT", "Sébastien"]
 COULEUR_TECH = {"MAT": "#00ff9c", "Sébastien": "#00ffee"}
 
+# Couleurs prédéfinies pour les activités (menu fiable, sans le panneau natif)
+COLOR_PRESETS = [
+    ("Vert (MAT)",        "#00ff9c"),
+    ("Cyan (Sébastien)",  "#00ffee"),
+    ("Rouge",             "#ff4d4d"),
+    ("Orange",            "#ff9f40"),
+    ("Jaune",             "#ffd633"),
+    ("Bleu",              "#4d94ff"),
+    ("Violet",            "#b366ff"),
+    ("Rose",              "#ff66c4"),
+    ("Blanc",             "#ffffff"),
+    ("Gris",              "#9ca3af"),
+]
+_COULEUR_PERSO = "__perso__"
+
 # Compression images
 COMPRESS_MAX_DIM = 1600
 COMPRESS_QUALITY = 85
@@ -226,15 +241,6 @@ h1, h2, h3 {{
     background: #00ff9c;
     color: black;
 }}
-
-/* Le panneau du sélecteur de couleur doit toujours passer AU-DESSUS
-   des autres éléments (sinon les clics tombent sur les boutons dessous) */
-div[data-baseweb="popover"],
-[data-baseweb="layer"],
-.stColorPicker [data-baseweb="popover"] {{
-    z-index: 2147483000 !important;
-}}
-.stColorPicker {{ position: relative; z-index: 500; }}
 
 [data-testid="stMetricValue"] {{ color: #00ff9c; }}
 
@@ -781,11 +787,45 @@ def _form_activite(row=None):
     c1, c2 = st.columns(2)
     tech  = c1.selectbox("👷 Technicien", TECHNICIENS,
                          index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
-    # Couleur : clé stable pour que le choix soit bien conservé et enregistré
-    color_key = f"color_pick_{row.get('id') if is_edit else 'new'}"
-    if color_key not in st.session_state:
-        st.session_state[color_key] = default_color
-    color = c2.color_picker("🎨 Couleur", key=color_key)
+
+    with c2:
+        st.markdown("🎨 **Couleur**")
+        base_id  = row.get("id") if is_edit else "new"
+        sel_key  = f"colorsel_{base_id}"
+        hex_key  = f"colorhex_{base_id}"
+
+        preset_hex = [h for _, h in COLOR_PRESETS]
+        name_of    = {h.lower(): n for n, h in COLOR_PRESETS}
+
+        # Initialisation (une seule fois par ouverture du popup)
+        if sel_key not in st.session_state:
+            if default_color and default_color.lower() in name_of:
+                st.session_state[sel_key] = next(
+                    h for h in preset_hex if h.lower() == default_color.lower())
+            else:
+                st.session_state[sel_key] = _COULEUR_PERSO
+        if hex_key not in st.session_state:
+            st.session_state[hex_key] = default_color or "#00ff9c"
+
+        sel = st.selectbox(
+            "Couleur",
+            preset_hex + [_COULEUR_PERSO],
+            format_func=lambda h: ("🎨 Autre (code hex)…" if h == _COULEUR_PERSO
+                                   else f"{name_of.get(h.lower(), 'Couleur')}  ({h})"),
+            key=sel_key,
+            label_visibility="collapsed",
+        )
+        if sel == _COULEUR_PERSO:
+            color = st.text_input("Code hex (#RRGGBB)", key=hex_key)
+        else:
+            color = sel
+
+        # Aperçu de la couleur choisie
+        st.markdown(
+            f'<div style="height:26px;border-radius:6px;border:1px solid #555;'
+            f'background:{color};margin-top:2px;"></div>',
+            unsafe_allow_html=True,
+        )
 
     desc = st.text_area("📄 Description", value=default_desc, height=120)
 
@@ -827,13 +867,23 @@ def _form_activite(row=None):
             st.error("L'heure de fin doit être après l'heure de début")
             return
 
+        # Validation de la couleur (surtout pour le mode "Autre / hex")
+        color_val = (color or "").strip()
+        if not color_val.startswith("#"):
+            color_val = "#" + color_val
+        hex_part = color_val[1:]
+        if len(color_val) not in (4, 7) or not all(
+                c in "0123456789abcdefABCDEF" for c in hex_part):
+            st.error(f"Couleur invalide : '{color}'. Utilise un format #RRGGBB (ex: #00ff9c).")
+            return
+
         payload = {
             "date":        d.isoformat(),
             "debut":       h_debut.strftime("%H:%M:%S"),
             "fin":         h_fin.strftime("%H:%M:%S"),
             "description": desc.strip(),
             "technicien":  tech,
-            "color":       color,
+            "color":       color_val,
         }
 
         try:
@@ -917,7 +967,8 @@ def _form_activite(row=None):
 
             invalider_cache()
             st.session_state.upload_key += 1
-            st.session_state.pop(color_key, None)
+            st.session_state.pop(sel_key, None)
+            st.session_state.pop(hex_key, None)
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
             st.session_state.pop("last_event_click", None)
             st.rerun()
@@ -925,7 +976,8 @@ def _form_activite(row=None):
             st.error(f"Erreur : {e}")
 
     if c2.button("Annuler", width="stretch"):
-        st.session_state.pop(color_key, None)
+        st.session_state.pop(sel_key, None)
+        st.session_state.pop(hex_key, None)
         st.rerun()
 
 @st.dialog("➕ Ajouter une activité", width="large", on_dismiss="rerun")
@@ -1322,9 +1374,14 @@ elif page == "📂 Liste":
                             imgs = [x for x in imgs if not (x in seen or seen.add(x))]
 
                             if imgs:
-                                cols = st.columns(min(len(imgs), 4))
+                                cols = st.columns(4)
                                 for i, img in enumerate(imgs):
-                                    cols[i % 4].image(img, width="stretch")
+                                    with cols[i % 4]:
+                                        st.image(img, width="stretch")
+                                        if st.button("🔍 Zoom",
+                                                     key=f"list_zoom_{record_id}_{i}"):
+                                            st.session_state.zoom_image = img
+                                            st.rerun()
 
                     with c2:
                         if st.button("👁️", key=f"voir_{row['id']}",
@@ -1665,9 +1722,14 @@ elif page == "🏭 Plan Usine":
                                 seen = set()
                                 imgs = [x for x in imgs if not (x in seen or seen.add(x))]
                                 if imgs:
-                                    cols = st.columns(min(len(imgs), 4))
+                                    cols = st.columns(4)
                                     for i, img in enumerate(imgs):
-                                        cols[i % 4].image(img, width="stretch")
+                                        with cols[i % 4]:
+                                            st.image(img, width="stretch")
+                                            if st.button("🔍 Zoom",
+                                                         key=f"zone_zoom_{record_id}_{i}"):
+                                                st.session_state.zoom_image = img
+                                                st.rerun()
                         with c2:
                             if st.button("👁️", key=f"zone_voir_{row['id']}",
                                          help="Ouvrir l'activité (avec zoom photos)"):
