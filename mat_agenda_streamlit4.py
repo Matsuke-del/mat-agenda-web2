@@ -221,12 +221,20 @@ h1, h2, h3 {{
     color: #00ff9c;
     border: 1px solid #00ff9c;
     border-radius: 8px;
-    backdrop-filter: blur(4px);
 }}
 .stButton>button:hover {{
     background: #00ff9c;
     color: black;
 }}
+
+/* Le panneau du sélecteur de couleur doit toujours passer AU-DESSUS
+   des autres éléments (sinon les clics tombent sur les boutons dessous) */
+div[data-baseweb="popover"],
+[data-baseweb="layer"],
+.stColorPicker [data-baseweb="popover"] {{
+    z-index: 2147483000 !important;
+}}
+.stColorPicker {{ position: relative; z-index: 500; }}
 
 [data-testid="stMetricValue"] {{ color: #00ff9c; }}
 
@@ -659,15 +667,32 @@ init_state()
 
 @st.dialog("🖼️ Image en grand", width="large", on_dismiss="rerun")
 def dlg_zoom_image(url: str):
-    st.image(url, width="stretch")
-    label = ("❌ Fermer et revenir à l'activité"
-             if st.session_state.get("zoom_return_row") is not None
-             else "❌ Fermer")
-    if st.button(label, width="stretch", type="primary"):
+    retour = st.session_state.get("zoom_return_row") is not None
+    label = "❌ Fermer et revenir à l'activité" if retour else "❌ Fermer le zoom"
+
+    def _fermer():
         ret = st.session_state.pop("zoom_return_row", None)
         if ret is not None:
             st.session_state.details_row = ret
         st.rerun()
+
+    # Bouton de fermeture EN HAUT, toujours visible
+    if st.button(label, width="stretch", type="primary", key="zoom_close_top"):
+        _fermer()
+
+    # Image limitée à la hauteur de l'écran pour rester entièrement visible
+    st.markdown(
+        f'<div style="text-align:center;">'
+        f'<img src="{url}" '
+        f'style="max-width:100%; max-height:72vh; border-radius:8px; '
+        f'box-shadow:0 4px 24px rgba(0,0,0,0.6);" />'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+    # Bouton de fermeture aussi en bas
+    if st.button(label, width="stretch", key="zoom_close_bottom"):
+        _fermer()
 
 @st.dialog("📋 Détails activité", on_dismiss="rerun")
 def dlg_details_activite(row: dict):
@@ -753,8 +778,6 @@ def _form_activite(row=None):
     h_debut = c1.time_input("⏰ Début", value=default_debut)
     h_fin   = c2.time_input("⏰ Fin",   value=default_fin)
 
-    desc = st.text_area("📄 Description", value=default_desc, height=120)
-
     c1, c2 = st.columns(2)
     tech  = c1.selectbox("👷 Technicien", TECHNICIENS,
                          index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
@@ -763,6 +786,8 @@ def _form_activite(row=None):
     if color_key not in st.session_state:
         st.session_state[color_key] = default_color
     color = c2.color_picker("🎨 Couleur", key=color_key)
+
+    desc = st.text_area("📄 Description", value=default_desc, height=120)
 
     # Images existantes : depuis le champ "images" de PocketBase
     images_existantes_files = row.get("images", []) if is_edit else []
