@@ -242,6 +242,18 @@ h1, h2, h3 {{
     color: black;
 }}
 
+/* Le panneau du sélecteur de couleur doit capter les clics EN PRIORITÉ,
+   au-dessus de la description et des boutons du popup (sinon les clics
+   passent au travers vers les éléments derrière). */
+[data-testid="stColorPicker"] {{
+    position: relative;
+    z-index: 100000;
+}}
+[data-testid="stHorizontalBlock"]:has([data-testid="stColorPicker"]) {{
+    position: relative;
+    z-index: 100000;
+}}
+
 [data-testid="stMetricValue"] {{ color: #00ff9c; }}
 
 .activity-card {{
