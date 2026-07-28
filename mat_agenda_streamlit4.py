@@ -787,45 +787,11 @@ def _form_activite(row=None):
     c1, c2 = st.columns(2)
     tech  = c1.selectbox("👷 Technicien", TECHNICIENS,
                          index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
-
-    with c2:
-        st.markdown("🎨 **Couleur**")
-        base_id  = row.get("id") if is_edit else "new"
-        sel_key  = f"colorsel_{base_id}"
-        hex_key  = f"colorhex_{base_id}"
-
-        preset_hex = [h for _, h in COLOR_PRESETS]
-        name_of    = {h.lower(): n for n, h in COLOR_PRESETS}
-
-        # Initialisation (une seule fois par ouverture du popup)
-        if sel_key not in st.session_state:
-            if default_color and default_color.lower() in name_of:
-                st.session_state[sel_key] = next(
-                    h for h in preset_hex if h.lower() == default_color.lower())
-            else:
-                st.session_state[sel_key] = _COULEUR_PERSO
-        if hex_key not in st.session_state:
-            st.session_state[hex_key] = default_color or "#00ff9c"
-
-        sel = st.selectbox(
-            "Couleur",
-            preset_hex + [_COULEUR_PERSO],
-            format_func=lambda h: ("🎨 Autre (code hex)…" if h == _COULEUR_PERSO
-                                   else f"{name_of.get(h.lower(), 'Couleur')}  ({h})"),
-            key=sel_key,
-            label_visibility="collapsed",
-        )
-        if sel == _COULEUR_PERSO:
-            color = st.text_input("Code hex (#RRGGBB)", key=hex_key)
-        else:
-            color = sel
-
-        # Aperçu de la couleur choisie
-        st.markdown(
-            f'<div style="height:26px;border-radius:6px;border:1px solid #555;'
-            f'background:{color};margin-top:2px;"></div>',
-            unsafe_allow_html=True,
-        )
+    # Sélecteur de couleur MANUEL (dégradé), clé stable pour conserver le choix
+    color_key = f"color_pick_{row.get('id') if is_edit else 'new'}"
+    if color_key not in st.session_state:
+        st.session_state[color_key] = default_color
+    color = c2.color_picker("🎨 Couleur", key=color_key)
 
     desc = st.text_area("📄 Description", value=default_desc, height=120)
 
@@ -967,8 +933,7 @@ def _form_activite(row=None):
 
             invalider_cache()
             st.session_state.upload_key += 1
-            st.session_state.pop(sel_key, None)
-            st.session_state.pop(hex_key, None)
+            st.session_state.pop(color_key, None)
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
             st.session_state.pop("last_event_click", None)
             st.rerun()
@@ -976,8 +941,7 @@ def _form_activite(row=None):
             st.error(f"Erreur : {e}")
 
     if c2.button("Annuler", width="stretch"):
-        st.session_state.pop(sel_key, None)
-        st.session_state.pop(hex_key, None)
+        st.session_state.pop(color_key, None)
         st.rerun()
 
 @st.dialog("➕ Ajouter une activité", width="large", on_dismiss="rerun")
