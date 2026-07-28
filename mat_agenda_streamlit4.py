@@ -244,14 +244,13 @@ h1, h2, h3 {{
 
 /* Le panneau du sélecteur de couleur doit capter les clics EN PRIORITÉ,
    au-dessus de la description et des boutons du popup (sinon les clics
-   passent au travers vers les éléments derrière). */
-[data-testid="stColorPicker"] {{
-    position: relative;
-    z-index: 100000;
-}}
+   passent au travers vers les éléments derrière). On remonte toute la
+   chaîne d'éléments (colonne + bloc + sélecteur) au premier plan. */
+[data-testid="stColorPicker"],
+[data-testid="stColumn"]:has([data-testid="stColorPicker"]),
 [data-testid="stHorizontalBlock"]:has([data-testid="stColorPicker"]) {{
-    position: relative;
-    z-index: 100000;
+    position: relative !important;
+    z-index: 2147483647 !important;
 }}
 
 [data-testid="stMetricValue"] {{ color: #00ff9c; }}
@@ -799,11 +798,41 @@ def _form_activite(row=None):
     c1, c2 = st.columns(2)
     tech  = c1.selectbox("👷 Technicien", TECHNICIENS,
                          index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
-    # Sélecteur de couleur MANUEL (dégradé), clé stable pour conserver le choix
-    color_key = f"color_pick_{row.get('id') if is_edit else 'new'}"
-    if color_key not in st.session_state:
-        st.session_state[color_key] = default_color
-    color = c2.color_picker("🎨 Couleur", key=color_key)
+
+    with c2:
+        st.markdown("🎨 **Couleur**")
+        cp_key = f"cp_{row.get('id') if is_edit else 'new'}"    # dégradé
+        tx_key = f"tx_{row.get('id') if is_edit else 'new'}"    # code hex
+        if cp_key not in st.session_state:
+            st.session_state[cp_key] = default_color
+        if tx_key not in st.session_state:
+            st.session_state[tx_key] = default_color
+
+        # Synchronisation dégradé <-> code hex (callbacks exécutés avant le rerun)
+        def _sync_depuis_degrade():
+            st.session_state[tx_key] = st.session_state[cp_key]
+
+        def _sync_depuis_texte():
+            v = str(st.session_state[tx_key]).strip()
+            if v and not v.startswith("#"):
+                v = "#" + v
+            hexp = v[1:]
+            if len(v) in (4, 7) and all(ch in "0123456789abcdefABCDEF" for ch in hexp):
+                st.session_state[cp_key] = v
+
+        st.color_picker("Nuancier (clic)", key=cp_key,
+                        on_change=_sync_depuis_degrade)
+        st.text_input("… ou code couleur (ex: #00ff9c)", key=tx_key,
+                      on_change=_sync_depuis_texte)
+
+        # Le code hex est la valeur fiable retenue
+        color = st.session_state[tx_key]
+
+        st.markdown(
+            f'<div style="height:22px;border-radius:6px;border:1px solid #555;'
+            f'background:{color};margin-top:4px;"></div>',
+            unsafe_allow_html=True,
+        )
 
     desc = st.text_area("📄 Description", value=default_desc, height=120)
 
@@ -945,7 +974,8 @@ def _form_activite(row=None):
 
             invalider_cache()
             st.session_state.upload_key += 1
-            st.session_state.pop(color_key, None)
+            st.session_state.pop(cp_key, None)
+            st.session_state.pop(tx_key, None)
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
             st.session_state.pop("last_event_click", None)
             st.rerun()
@@ -953,7 +983,8 @@ def _form_activite(row=None):
             st.error(f"Erreur : {e}")
 
     if c2.button("Annuler", width="stretch"):
-        st.session_state.pop(color_key, None)
+        st.session_state.pop(cp_key, None)
+        st.session_state.pop(tx_key, None)
         st.rerun()
 
 @st.dialog("➕ Ajouter une activité", width="large", on_dismiss="rerun")
