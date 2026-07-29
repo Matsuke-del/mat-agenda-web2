@@ -60,8 +60,19 @@ except (KeyError, FileNotFoundError):
 
 APP_URL = "https://mat-agenda-web2-mngwrfjcalzf3kbpdvd99n.streamlit.app"
 
-TECHNICIENS = ["MAT", "Sébastien"]
-COULEUR_TECH = {"MAT": "#00ff9c", "Sébastien": "#00ffee"}
+DEFAULT_TECHNICIENS = ["MAT", "Sébastien"]
+DEFAULT_COULEUR_TECH = {"MAT": "#00ff9c", "Sébastien": "#00ffee"}
+# Ces variables sont rechargées depuis PocketBase (collection 'techniciens')
+TECHNICIENS = list(DEFAULT_TECHNICIENS)
+COULEUR_TECH = dict(DEFAULT_COULEUR_TECH)
+
+def parse_techs(value):
+    """Transforme la valeur 'technicien' (ex 'MAT, Sébastien') en liste."""
+    if not value:
+        return []
+    if isinstance(value, list):
+        return [str(x).strip() for x in value if str(x).strip()]
+    return [t.strip() for t in str(value).split(",") if t.strip()]
 
 # Couleurs prédéfinies pour les activités (menu fiable, sans le panneau natif)
 COLOR_PRESETS = [
@@ -643,6 +654,36 @@ def lire_taches() -> list:
 def invalider_cache():
     lire_activites.clear()
     lire_taches.clear()
+    charger_techniciens.clear()
+
+@st.cache_data(ttl=120, show_spinner=False)
+def charger_techniciens():
+    """Liste des techniciens = défauts + collection 'techniciens' (si elle existe)
+    + techniciens déjà utilisés dans des activités (rétrocompat)."""
+    noms = list(DEFAULT_TECHNICIENS)
+    couleurs = dict(DEFAULT_COULEUR_TECH)
+    # 1) Collection dédiée 'techniciens' (créée par l'utilisateur dans PocketBase)
+    try:
+        items = pb.list_all("techniciens", sort="nom")
+        for it in items:
+            nom = (it.get("nom") or "").strip()
+            if nom and nom not in noms:
+                noms.append(nom)
+            if nom and it.get("couleur"):
+                couleurs[nom] = it["couleur"]
+    except Exception:
+        pass  # collection absente -> on garde les défauts
+    # 2) Techniciens déjà présents dans des activités
+    try:
+        df_a = lire_activites()
+        if not df_a.empty and "technicien" in df_a.columns:
+            for val in df_a["technicien"].dropna().unique():
+                for t in parse_techs(val):
+                    if t and t not in noms:
+                        noms.append(t)
+    except Exception:
+        pass
+    return noms, couleurs
 
 # =========================================================
 # SESSION STATE INIT
@@ -677,6 +718,9 @@ def init_state():
         st.session_state.setdefault(k, v)
 
 init_state()
+
+# Charger la liste des techniciens (met à jour les variables globales)
+TECHNICIENS, COULEUR_TECH = charger_techniciens()
 
 # =========================================================
 # DIALOGS (POPUPS)
@@ -796,8 +840,17 @@ def _form_activite(row=None):
     h_fin   = c2.time_input("⏰ Fin",   value=default_fin)
 
     c1, c2 = st.columns(2)
-    tech  = c1.selectbox("👷 Technicien", TECHNICIENS,
-                         index=TECHNICIENS.index(default_tech) if default_tech in TECHNICIENS else 0)
+    # Plusieurs techniciens possibles sur une même activité
+    default_techs = [t for t in parse_techs(default_tech) if t]
+    options_tech = list(TECHNICIENS)
+    for t in default_techs:
+        if t not in options_tech:
+            options_tech.append(t)
+    if not default_techs and not is_edit and options_tech:
+        default_techs = [options_tech[0]]
+    with c1:
+        tech_list = st.multiselect("👷 Technicien(s)", options_tech,
+                                   default=[t for t in default_techs if t in options_tech])
 
     with c2:
         st.markdown("🎨 **Couleur**")
@@ -883,6 +936,11 @@ def _form_activite(row=None):
                 c in "0123456789abcdefABCDEF" for c in hex_part):
             st.error(f"Couleur invalide : '{color}'. Utilise un format #RRGGBB (ex: #00ff9c).")
             return
+
+        if not tech_list:
+            st.error("Sélectionne au moins un technicien.")
+            return
+        tech = ", ".join(tech_list)
 
         payload = {
             "date":        d.isoformat(),
@@ -1070,6 +1128,72 @@ def dlg_taches():
     nb_restant = sum(1 for t in taches if not t.get("done"))
     st.caption(f"📌 {nb_restant} tâche(s) en cours • {len(taches)} au total")
 
+
+@st.dialog("👷 Gérer les techniciens", width="large", on_dismiss="rerun")
+def dlg_gerer_techniciens():
+    st.write("Ajoute de nouveaux techniciens (avec leur couleur) ou supprime-les. "
+             "Ils seront proposés dans le choix des activités.")
+
+    # --- Formulaire d'ajout ---
+    with st.form("form_add_tech", clear_on_submit=True):
+        c1, c2, c3 = st.columns([4, 2, 2])
+        nom_new = c1.text_input("Nom du technicien", placeholder="ex : Julien")
+        coul_new = c2.color_picker("Couleur", "#4d94ff")
+        c3.write("")
+        c3.write("")
+        ok = c3.form_submit_button("➕ Ajouter et enregistrer", width="stretch")
+        if ok:
+            if not nom_new.strip():
+                st.error("Saisis un nom.")
+            else:
+                try:
+                    pb.create_record("techniciens",
+                                     {"nom": nom_new.strip(), "couleur": coul_new})
+                    charger_techniciens.clear()
+                    st.success(f"Technicien « {nom_new.strip()} » enregistré ✅")
+                    st.rerun()
+                except Exception as e:
+                    st.error(
+                        "❌ Enregistrement impossible. Dans PocketBase, crée une "
+                        "collection **techniciens** (type *Base*) avec 2 champs :\n"
+                        "- `nom` (Plain text)\n- `couleur` (Plain text)\n\n"
+                        "Donne les droits de lecture/écriture au compte de l'app.\n\n"
+                        f"Détail technique : {e}"
+                    )
+
+    st.divider()
+    st.markdown("**Techniciens enregistrés**")
+
+    # Techniciens de la collection (supprimables)
+    try:
+        items = pb.list_all("techniciens", sort="nom")
+    except Exception:
+        items = []
+
+    if items:
+        for it in items:
+            c1, c2, c3 = st.columns([5, 2, 1])
+            c1.write(f"👷 {it.get('nom')}")
+            c2.markdown(
+                f"<div style='height:22px;border-radius:6px;border:1px solid #555;"
+                f"background:{it.get('couleur', '#888')}'></div>",
+                unsafe_allow_html=True)
+            if c3.button("🗑️", key=f"deltech_{it['id']}", help="Supprimer"):
+                try:
+                    pb.delete_record("techniciens", it["id"])
+                    charger_techniciens.clear()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erreur : {e}")
+    else:
+        st.info("Aucun technicien dans la collection 'techniciens' pour l'instant.")
+
+    # Techniciens par défaut (non supprimables)
+    st.caption("Toujours disponibles : " + ", ".join(DEFAULT_TECHNICIENS))
+
+    if st.button("Fermer", width="stretch"):
+        st.rerun()
+
 # =========================================================
 # DECLENCHEMENT POPUPS (un seul a la fois)
 # =========================================================
@@ -1103,6 +1227,11 @@ if not _dialog_opened and st.session_state.get("show_add"):
     st.session_state.pop("show_add", None)
     dlg_ajout()
 
+if not _dialog_opened and st.session_state.get("show_gerer_tech"):
+    _dialog_opened = True
+    st.session_state.pop("show_gerer_tech", None)
+    dlg_gerer_techniciens()
+
 if not _dialog_opened and st.session_state.get("details_row"):
     _dialog_opened = True
     dr = st.session_state.pop("details_row")
@@ -1129,6 +1258,10 @@ with st.sidebar:
 
     if st.button("📝 Tâches à prévoir", width="stretch"):
         dlg_taches()
+
+    if st.button("👷 Gérer les techniciens", width="stretch"):
+        st.session_state.show_gerer_tech = True
+        st.rerun()
 
     st.divider()
 
@@ -1176,7 +1309,8 @@ if page == "📅 Calendrier":
             index=0, key="cal_tech_filter"
         )
 
-        df_cal = df if tech_filter == "Tous" else df[df["technicien"] == tech_filter]
+        df_cal = df if tech_filter == "Tous" else df[
+            df["technicien"].apply(lambda s: tech_filter in parse_techs(s))]
 
         events = []
         for _, row in df_cal.iterrows():
@@ -1299,7 +1433,8 @@ elif page == "📂 Liste":
                          .str.contains(mot, case=False, na=False)]
 
         if tech_filter != "Tous":
-            sub = sub[sub["technicien"] == tech_filter]
+            sub = sub[sub["technicien"].apply(
+                lambda s: tech_filter in parse_techs(s))]
 
         sub = sub[
             (pd.to_datetime(sub["date"]).dt.date >= date_debut) &
@@ -1421,9 +1556,10 @@ elif page == "📊 Statistiques":
         c1, c2 = st.columns([2, 6])
         tech_filter = c1.selectbox(
             "👷 Technicien",
-            ["Tous"] + sorted(df["technicien"].dropna().unique())
+            ["Tous"] + TECHNICIENS
         )
-        sub = df if tech_filter == "Tous" else df[df["technicien"] == tech_filter]
+        sub = df if tech_filter == "Tous" else df[
+            df["technicien"].apply(lambda s: tech_filter in parse_techs(s))]
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("⏱ Temps total", f"{sub['heures'].sum():.1f} h")
@@ -1445,8 +1581,13 @@ elif page == "📊 Statistiques":
 
         with c2:
             st.subheader("Répartition par technicien")
-            stats_tech = df.groupby("technicien")["heures"].sum().sort_values(ascending=False)
-            if len(stats_tech) > 0:
+            # Chaque technicien d'une activité multi-tech est crédité des heures
+            heures_par_tech = {}
+            for _, r in df.iterrows():
+                for t in parse_techs(r.get("technicien")):
+                    heures_par_tech[t] = heures_par_tech.get(t, 0) + r.get("heures", 0)
+            if heures_par_tech:
+                stats_tech = pd.Series(heures_par_tech).sort_values(ascending=False)
                 st.bar_chart(stats_tech, color="#00ffee")
 
         st.subheader("Nombre d'activités par mois")
