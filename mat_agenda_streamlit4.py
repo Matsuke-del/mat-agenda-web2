@@ -854,32 +854,33 @@ def _form_activite(row=None):
 
     with c2:
         st.markdown("🎨 **Couleur**")
-        cp_key = f"cp_{row.get('id') if is_edit else 'new'}"    # dégradé
-        tx_key = f"tx_{row.get('id') if is_edit else 'new'}"    # code hex
+        base_id  = row.get("id") if is_edit else "new"
+        cp_key   = f"cp_{base_id}"       # dégradé
+        tx_key   = f"tx_{base_id}"       # code hex
+        prev_key = f"prevcol_{base_id}"  # dernière valeur retenue
+
+        if prev_key not in st.session_state:
+            st.session_state[prev_key] = default_color
         if cp_key not in st.session_state:
-            st.session_state[cp_key] = default_color
+            st.session_state[cp_key] = st.session_state[prev_key]
         if tx_key not in st.session_state:
-            st.session_state[tx_key] = default_color
+            st.session_state[tx_key] = st.session_state[prev_key]
 
-        # Synchronisation dégradé <-> code hex (callbacks exécutés avant le rerun)
-        def _sync_depuis_degrade():
-            st.session_state[tx_key] = st.session_state[cp_key]
+        picked = st.color_picker("Nuancier (clic)", key=cp_key)
+        typed  = st.text_input("… ou code couleur (ex: #00ff9c)", key=tx_key)
 
-        def _sync_depuis_texte():
-            v = str(st.session_state[tx_key]).strip()
+        prev = st.session_state[prev_key]
+        # On retient la valeur qui vient d'être modifiée (dégradé OU code hex)
+        if picked != prev and picked != typed:
+            color = picked
+        elif typed != prev and typed != picked:
+            v = typed.strip()
             if v and not v.startswith("#"):
                 v = "#" + v
-            hexp = v[1:]
-            if len(v) in (4, 7) and all(ch in "0123456789abcdefABCDEF" for ch in hexp):
-                st.session_state[cp_key] = v
-
-        st.color_picker("Nuancier (clic)", key=cp_key,
-                        on_change=_sync_depuis_degrade)
-        st.text_input("… ou code couleur (ex: #00ff9c)", key=tx_key,
-                      on_change=_sync_depuis_texte)
-
-        # Le code hex est la valeur fiable retenue
-        color = st.session_state[tx_key]
+            color = v
+        else:
+            color = picked
+        st.session_state[prev_key] = color
 
         st.markdown(
             f'<div style="height:22px;border-radius:6px;border:1px solid #555;'
@@ -1034,6 +1035,7 @@ def _form_activite(row=None):
             st.session_state.upload_key += 1
             st.session_state.pop(cp_key, None)
             st.session_state.pop(tx_key, None)
+            st.session_state.pop(prev_key, None)
             st.session_state.calendar_version = st.session_state.get("calendar_version", 0) + 1
             st.session_state.pop("last_event_click", None)
             st.rerun()
@@ -1043,6 +1045,7 @@ def _form_activite(row=None):
     if c2.button("Annuler", width="stretch"):
         st.session_state.pop(cp_key, None)
         st.session_state.pop(tx_key, None)
+        st.session_state.pop(prev_key, None)
         st.rerun()
 
 @st.dialog("➕ Ajouter une activité", width="large", on_dismiss="rerun")
